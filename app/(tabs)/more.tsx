@@ -101,6 +101,9 @@ export default function MoreScreen() {
     currency: '/currency',
     wallet: '/wallet',
     loyalty: '/loyalty',
+    essentials: '/essentials',
+    visa: '/visa',
+    identity: '/identity',
   };
 
   const openFeature = (row: Row) => {
