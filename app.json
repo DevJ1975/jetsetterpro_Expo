@@ -11,10 +11,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.jetsetterpro.app"
+      "bundleIdentifier": "com.trainovate.jetsetterpro"
     },
     "android": {
-      "package": "com.jetsetterpro.app",
+      "package": "com.trainovate.jetsetterpro",
       "adaptiveIcon": {
         "backgroundColor": "#06070D",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

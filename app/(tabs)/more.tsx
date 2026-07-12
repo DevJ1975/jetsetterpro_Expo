@@ -1,12 +1,11 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Switch, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { Badge, Card, ListRow, ScreenHeader, SectionLabel, palette, spacing, type } from '@/src/ui';
 import { Screen } from '@/src/features/common/Screen';
 import { IconWell } from '@/src/features/common/IconWell';
-import { demoExpenses, demoTrips } from '@/src/core/demo/mockData';
 import { usePreferences } from '@/src/core/store/preferences';
-import { useTravel } from '@/src/core/store/travel';
 
 type Row = { title: string; subtitle?: string; icon: string; pro?: boolean; slug: string };
 type Group = { header: string; rows: Row[] };
@@ -91,50 +90,63 @@ export default function MoreScreen() {
   const name = usePreferences((s) => s.name);
   const homeAirport = usePreferences((s) => s.homeAirport);
   const homeCurrency = usePreferences((s) => s.homeCurrency);
-  const demoMode = usePreferences((s) => s.demoMode);
-  const setDemoMode = usePreferences((s) => s.setDemoMode);
-  const setAll = useTravel((s) => s.setAll);
 
-  const openFeature = (row: Row) => {
-    router.push({ pathname: '/feature/[slug]', params: { slug: row.slug, title: row.title, subtitle: row.subtitle ?? '' } });
+  // Ported screens route directly; everything else lands on the shared "coming soon".
+  const REAL_ROUTES: Record<string, string> = {
+    packing: '/packing',
+    currency: '/currency',
+    wallet: '/wallet',
+    loyalty: '/loyalty',
+    essentials: '/essentials',
+    visa: '/visa',
+    identity: '/identity',
+    settings: '/settings',
+    ground: '/ground',
+    carbon: '/carbon',
   };
 
-  const toggleDemo = (on: boolean) => {
-    setDemoMode(on);
-    if (on) setAll(demoTrips(), demoExpenses());
-    else setAll([], []);
+  const openFeature = (row: Row) => {
+    const real = REAL_ROUTES[row.slug];
+    if (real) {
+      router.push(real as never);
+      return;
+    }
+    router.push({ pathname: '/feature/[slug]', params: { slug: row.slug, title: row.title, subtitle: row.subtitle ?? '' } });
   };
 
   return (
     <Screen contentStyle={{ paddingHorizontal: spacing.xl }}>
       <ScreenHeader overline="Everything else" title="More" style={{ paddingHorizontal: 0 }} />
 
-      <Card style={{ marginBottom: spacing.lg }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-          <View
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 24,
-              backgroundColor: palette.fillAccent,
-              borderWidth: 1,
-              borderColor: palette.lineStrong,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text style={[type.heading, { color: palette.bright }]}>
-              {(name || 'T').charAt(0).toUpperCase()}
-            </Text>
+      <Pressable onPress={() => router.push('/settings')}>
+        <Card style={{ marginBottom: spacing.lg }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                backgroundColor: palette.fillAccent,
+                borderWidth: 1,
+                borderColor: palette.lineStrong,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text style={[type.heading, { color: palette.bright }]}>
+                {(name || 'T').charAt(0).toUpperCase()}
+              </Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={type.sub}>{name || 'Traveler'}</Text>
+              <Text style={[type.bodyDim, { marginTop: 2 }]}>
+                {[homeAirport, homeCurrency].filter(Boolean).join(' · ') || 'Set up your profile'}
+              </Text>
+            </View>
+            <Ionicons name="settings-outline" size={22} color={palette.faint} />
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={type.sub}>{name || 'Traveler'}</Text>
-            <Text style={[type.bodyDim, { marginTop: 2 }]}>
-              {[homeAirport, homeCurrency].filter(Boolean).join(' · ') || 'Set up your profile'}
-            </Text>
-          </View>
-        </View>
-      </Card>
+        </Card>
+      </Pressable>
 
       {CATALOG.map((group) => (
         <Card key={group.header} style={{ marginBottom: spacing.lg }}>
@@ -152,22 +164,7 @@ export default function MoreScreen() {
           ))}
         </Card>
       ))}
-
-      <Card style={{ marginBottom: spacing.xxxl }}>
-        <SectionLabel>Developer</SectionLabel>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={{ flex: 1 }}>
-            <Text style={type.sub}>Demo data</Text>
-            <Text style={[type.bodyDim, { marginTop: 2 }]}>Explore with seeded trips & expenses</Text>
-          </View>
-          <Switch
-            value={demoMode}
-            onValueChange={toggleDemo}
-            trackColor={{ true: palette.accent, false: palette.line }}
-            thumbColor="#FFFFFF"
-          />
-        </View>
-      </Card>
+      <View style={{ height: spacing.xxxl }} />
     </Screen>
   );
 }

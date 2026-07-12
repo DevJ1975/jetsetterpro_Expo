@@ -1,4 +1,4 @@
-import type { Session } from '@supabase/supabase-js';
+import type { User } from 'firebase/auth';
 import { create } from 'zustand';
 
 interface SessionState {
@@ -6,20 +6,20 @@ interface SessionState {
   userId?: string;
   email?: string;
   isAnonymous: boolean;
-  setFromSession: (s: Session | null) => void;
+  setFromUser: (u: User | null) => void;
 }
 
 export const useSession = create<SessionState>((set) => ({
   status: 'unknown',
   isAnonymous: false,
-  setFromSession: (s) =>
+  setFromUser: (u) =>
     set(
-      s
+      u
         ? {
             status: 'signedIn',
-            userId: s.user.id,
-            email: s.user.email ?? undefined,
-            isAnonymous: s.user.is_anonymous ?? false,
+            userId: u.uid,
+            email: u.email ?? undefined,
+            isAnonymous: u.isAnonymous,
           }
         : { status: 'signedOut', userId: undefined, email: undefined, isAnonymous: false },
     ),

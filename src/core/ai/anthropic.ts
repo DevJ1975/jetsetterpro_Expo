@@ -1,6 +1,6 @@
 import { fetch as expoFetch } from 'expo/fetch';
-import { env, isSupabaseConfigured } from '@/src/core/env';
-import { supabase } from '@/src/core/supabase/client';
+import { auth } from '@/src/core/firebase/auth';
+import { aiEndpoint, isAiConfigured } from '@/src/core/firebase/config';
 
 // Streaming client for the `ai-iris` Edge Function (which proxies the Anthropic
 // Messages API and holds the key). `expo/fetch` gives us a real streaming body
@@ -56,10 +56,6 @@ export class AIUnavailableError extends Error {
   }
 }
 
-function functionUrl(): string {
-  return `${env.supabaseUrl}/functions/v1/ai-iris`;
-}
-
 /** Stream one assistant turn. Calls `onText` with each text delta; resolves with
  *  the fully-assembled turn (text + any tool_use blocks). */
 export async function streamAssistantTurn(params: {
@@ -70,16 +66,14 @@ export async function streamAssistantTurn(params: {
   onText?: (delta: string) => void;
   signal?: AbortSignal;
 }): Promise<AssistantTurn> {
-  if (!isSupabaseConfigured()) throw new AIUnavailableError('Backend not configured');
+  if (!isAiConfigured()) throw new AIUnavailableError('AI backend not configured');
 
-  const { data } = await supabase.auth.getSession();
-  const accessToken = data.session?.access_token ?? env.supabaseAnonKey;
+  const token = (await auth.currentUser?.getIdToken()) ?? '';
 
-  const resp = await expoFetch(functionUrl(), {
+  const resp = await expoFetch(aiEndpoint, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
-      apikey: env.supabaseAnonKey,
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({

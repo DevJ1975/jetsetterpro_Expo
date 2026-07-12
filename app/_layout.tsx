@@ -10,11 +10,12 @@ import 'react-native-reanimated';
 import { demoExpenses, demoTrips } from '@/src/core/demo/mockData';
 import { queryClient } from '@/src/core/query';
 import { usePreferences } from '@/src/core/store/preferences';
+import { onAuthStateChanged } from 'firebase/auth';
 import { useSession } from '@/src/core/store/session';
 import { useTravel } from '@/src/core/store/travel';
-import { ensureSignedIn } from '@/src/core/supabase/auth';
-import { bindSupabaseAppState, isSupabaseConfigured, supabase } from '@/src/core/supabase/client';
-import { reconcile } from '@/src/core/supabase/sync';
+import { auth, ensureSignedIn } from '@/src/core/firebase/auth';
+import { isFirebaseConfigured } from '@/src/core/firebase/config';
+import { reconcile } from '@/src/core/firebase/firestore';
 import { palette } from '@/src/ui';
 
 export const unstable_settings = { anchor: '(tabs)' };
@@ -62,15 +63,14 @@ function RootNavigator() {
         travel.setAll(demoTrips(), demoExpenses());
       }
 
-      if (isSupabaseConfigured()) {
-        bindSupabaseAppState();
-        const session = await ensureSignedIn();
+      if (isFirebaseConfigured()) {
+        const user = await ensureSignedIn();
         if (cancelled) return;
-        useSession.getState().setFromSession(session);
-        supabase.auth.onAuthStateChange((_event, s) => useSession.getState().setFromSession(s));
+        useSession.getState().setFromUser(user);
+        onAuthStateChanged(auth, (u) => useSession.getState().setFromUser(u));
 
         // Only merge cloud data into a real (non-demo) local store.
-        if (session && !demoMode) {
+        if (user && !demoMode) {
           const cur = useTravel.getState();
           const merged = await reconcile(cur.trips, cur.expenses);
           if (!cancelled) useTravel.getState().setAll(merged.trips, merged.expenses);
