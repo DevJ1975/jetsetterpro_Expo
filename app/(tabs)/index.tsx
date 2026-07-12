@@ -13,6 +13,7 @@ import {
 } from '@/src/ui';
 import { Screen } from '@/src/features/common/Screen';
 import { EmptyState } from '@/src/features/common/EmptyState';
+import { IrisSuggestionCard } from '@/src/features/iris/SuggestionCard';
 import { useWeather, cToF } from '@/src/core/api/weather';
 import { formatMoney, formatTime, relativeDayLabel, toISODate } from '@/src/core/format';
 import { usePreferences } from '@/src/core/store/preferences';
@@ -52,6 +53,8 @@ export default function HomeScreen() {
         right={demoMode ? <Badge tone="neutral" label="Demo" /> : undefined}
         style={{ paddingHorizontal: 0 }}
       />
+
+      <IrisSuggestionCard />
 
       {!trip && !flight ? (
         <Card variant="glass">

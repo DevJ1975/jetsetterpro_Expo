@@ -43,7 +43,7 @@ async function geocode(city: string): Promise<{ lat: number; lon: number } | nul
   return g ? { lat: g.latitude, lon: g.longitude } : null;
 }
 
-async function fetchWeather(city: string): Promise<Weather | null> {
+export async function fetchWeather(city: string): Promise<Weather | null> {
   const g = await geocode(city);
   if (!g) return null;
   const r = await fetch(
