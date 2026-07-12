@@ -6,12 +6,12 @@ import {
   deleteTripRemote,
   pushExpense,
   pushTrip,
-} from '@/src/core/supabase/sync';
-import type { Expense, ItineraryItem, Trip } from '@/src/types/models';
+} from '@/src/core/firebase/firestore';
+import type { Expense, ItineraryItem, PackingItem, Trip } from '@/src/types/models';
 
 // Local-first source of truth for trips + expenses (the RN analog of the iOS
 // TravelStore). Every mutation updates local state immediately and fires a
-// best-effort push to Supabase; no-op when the backend is unconfigured.
+// best-effort push to Firestore; no-op when the backend is unconfigured.
 
 interface TravelState {
   trips: Trip[];
@@ -22,6 +22,8 @@ interface TravelState {
   removeTrip: (id: string) => void;
   addItineraryItem: (tripId: string, item: ItineraryItem) => void;
   removeItineraryItem: (tripId: string, itemId: string) => void;
+  setPackingList: (tripId: string, items: PackingItem[]) => void;
+  togglePackingItem: (tripId: string, itemId: string) => void;
   addExpense: (e: Expense) => void;
   updateExpense: (e: Expense) => void;
   removeExpense: (id: string) => void;
@@ -64,6 +66,22 @@ export const useTravel = create<TravelState>()(
         const trip = get().trips.find((x) => x.id === tripId);
         if (!trip) return;
         get().updateTrip({ ...trip, items: trip.items.filter((i) => i.id !== itemId) });
+      },
+
+      setPackingList: (tripId, items) => {
+        const trip = get().trips.find((x) => x.id === tripId);
+        if (!trip) return;
+        get().updateTrip({ ...trip, packingList: items });
+      },
+      togglePackingItem: (tripId, itemId) => {
+        const trip = get().trips.find((x) => x.id === tripId);
+        if (!trip?.packingList) return;
+        get().updateTrip({
+          ...trip,
+          packingList: trip.packingList.map((p) =>
+            p.id === itemId ? { ...p, packed: !p.packed } : p,
+          ),
+        });
       },
 
       addExpense: (e) => {

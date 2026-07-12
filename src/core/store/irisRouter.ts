@@ -85,6 +85,16 @@ export const useIrisRouter = create<IrisRouterState>((set) => ({
       router.navigate(tabHref as never);
       return;
     }
+    // Ported feature screens (real routes).
+    const real: Partial<Record<Destination, string>> = {
+      packingList: '/packing',
+      currency: '/currency',
+    };
+    const realHref = real[dest];
+    if (realHref) {
+      router.navigate(realHref as never);
+      return;
+    }
     const feature = FEATURE[dest];
     if (feature) {
       router.push({ pathname: '/feature/[slug]', params: { slug: feature.slug, title: feature.title } });

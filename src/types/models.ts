@@ -1,8 +1,6 @@
 // Domain models — ported from the iOS Codable structs (Trip / ItineraryItem /
-// Expense) and aligned to the Supabase schema-v1 wire format:
-//   public.trips     (id, user_id, name, destination, start_date, end_date, items jsonb, packing_list jsonb)
-//   public.expenses  (id, user_id, amount, currency, category UPPERCASE, merchant, date, notes)
-// The client never sends user_id (DB default auth.uid()); RLS enforces ownership.
+// Expense). Persisted as Firestore documents under users/{uid}/trips/{id} and
+// users/{uid}/expenses/{id}; ownership is enforced by Firestore security rules.
 
 export type ISODate = string; // 'YYYY-MM-DD'
 export type ISODateTime = string; // full ISO-8601

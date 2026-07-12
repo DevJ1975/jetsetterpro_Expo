@@ -1,8 +1,8 @@
 import * as SecureStore from 'expo-secure-store';
 
 // Keychain (iOS) / Keystore (Android) — the RN analog of the iOS
-// KeychainCredentials + VaultCrypto master key. Used for the Supabase session
-// hardening and, later, the Document Vault encryption key.
+// KeychainCredentials + VaultCrypto master key. Used, later, for the Document
+// Vault encryption key and any at-rest secret hardening.
 export const secure = {
   get: (key: string) => SecureStore.getItemAsync(key),
   set: (key: string, value: string) =>

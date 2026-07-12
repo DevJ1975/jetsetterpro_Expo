@@ -6,7 +6,7 @@ import { composeFirstTurn, currentSnapshot } from '@/src/core/ai/iris/context';
 import { demoResponse } from '@/src/core/ai/iris/demo';
 import { executeIrisTool, IRIS_TOOLS } from '@/src/core/ai/iris/tools';
 import { makeId } from '@/src/core/format';
-import { isSupabaseConfigured } from '@/src/core/env';
+import { isAiConfigured } from '@/src/core/firebase/config';
 import { useIrisRouter } from '@/src/core/store/irisRouter';
 import { useTravel } from '@/src/core/store/travel';
 
@@ -69,8 +69,8 @@ export const useIris = create<IrisChatState>((set, get) => ({
     const snapshot = isFirst ? currentSnapshot(travel.trips, travel.expenses) : '';
     const apiUser: ChatMessage = { role: 'user', content: composeFirstTurn(text, snapshot) };
 
-    // Demo / offline fallback — no backend configured.
-    if (!isSupabaseConfigured()) {
+    // Demo / offline fallback — no AI backend configured.
+    if (!isAiConfigured()) {
       const reply = demoResponse(text);
       await typeOut(reply, (partial) => set({ streamingContent: partial }));
       set((st) => ({

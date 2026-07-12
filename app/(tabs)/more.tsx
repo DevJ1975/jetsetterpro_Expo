@@ -95,7 +95,15 @@ export default function MoreScreen() {
   const setDemoMode = usePreferences((s) => s.setDemoMode);
   const setAll = useTravel((s) => s.setAll);
 
+  // Ported screens route directly; everything else lands on the shared "coming soon".
+  const REAL_ROUTES: Record<string, string> = { packing: '/packing', currency: '/currency' };
+
   const openFeature = (row: Row) => {
+    const real = REAL_ROUTES[row.slug];
+    if (real) {
+      router.push(real as never);
+      return;
+    }
     router.push({ pathname: '/feature/[slug]', params: { slug: row.slug, title: row.title, subtitle: row.subtitle ?? '' } });
   };
 
