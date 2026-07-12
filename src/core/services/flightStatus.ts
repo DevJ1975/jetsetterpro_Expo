@@ -25,8 +25,11 @@ export interface DerivedFlight {
 }
 
 export function parseRoute(title: string): { origin: string; dest: string } {
-  const m = title.match(/([A-Z]{3})\s*(?:→|->|to)\s*([A-Z]{3})/i);
-  return m ? { origin: m[1].toUpperCase(), dest: m[2].toUpperCase() } : { origin: '', dest: '' };
+  // Match standalone UPPERCASE IATA tokens only (no /i flag, word-boundaried),
+  // so natural-language titles like "New York to Boston" don't yield garbage
+  // codes by grabbing letters out of the middle of words.
+  const m = title.match(/\b([A-Z]{3})\b\s*(?:→|->|to)\s*\b([A-Z]{3})\b/);
+  return m ? { origin: m[1], dest: m[2] } : { origin: '', dest: '' };
 }
 
 /** Best-effort flight-number token from an itinerary title (e.g. "AA 100"). */
@@ -82,7 +85,9 @@ export function deriveFlight(item: ItineraryItem, now: Date = new Date()): Deriv
   };
 }
 
-/** Map a derived flight into the Live Activity content payload. */
+/** Map a derived flight into the Live Activity content payload. `progress` is
+ *  forwarded for forward-compatibility; the current widget renders status/gate
+ *  and does not yet read progress. */
 export function toActivityContent(f: DerivedFlight): FlightActivityContent {
   return {
     flightNumber: f.flightNumber,

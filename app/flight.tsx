@@ -1,12 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Badge, Button, Card, Input, ProgressBar, SectionLabel, palette, spacing, type } from '@/src/ui';
 import { Screen } from '@/src/features/common/Screen';
 import { BackHeader } from '@/src/features/common/BackHeader';
 import { EmptyState } from '@/src/features/common/EmptyState';
 import { formatTime } from '@/src/core/format';
-import { nextUpcomingFlight, useTravel } from '@/src/core/store/travel';
+import { currentOrNextFlight, useTravel } from '@/src/core/store/travel';
 import { deriveFlight, toActivityContent, type FlightStatusLabel } from '@/src/core/services/flightStatus';
 import { FlightLiveActivity } from '@/src/core/services/liveActivity';
 
@@ -28,12 +28,21 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 export default function FlightTrackerScreen() {
   const trips = useTravel((s) => s.trips);
-  const flight = useMemo(() => nextUpcomingFlight(trips), [trips]);
+  const flight = useMemo(() => currentOrNextFlight(trips), [trips]);
   const derived = useMemo(() => (flight ? deriveFlight(flight.item) : null), [flight]);
 
   const [search, setSearch] = useState('');
   const [tracking, setTracking] = useState(false);
   const [laNote, setLaNote] = useState<string | null>(null);
+
+  // End any Live Activity this tracker session started when the screen closes,
+  // so it doesn't linger without app-controlled teardown.
+  const activityId = useRef<string | null>(null);
+  useEffect(() => {
+    return () => {
+      if (activityId.current) void FlightLiveActivity.end(activityId.current);
+    };
+  }, []);
 
   // A typed number that doesn't match the itinerary flight can't be resolved
   // without the flight-data backend — say so rather than fabricating a status.
@@ -45,6 +54,7 @@ export default function FlightTrackerScreen() {
     if (!show) return;
     const id = await FlightLiveActivity.start(toActivityContent(show));
     if (id) {
+      activityId.current = id;
       setTracking(true);
       setLaNote('Live Activity started — check your Lock Screen and Dynamic Island.');
     } else {

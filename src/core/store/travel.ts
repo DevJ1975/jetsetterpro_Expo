@@ -134,3 +134,20 @@ export function nextUpcomingFlight(
     .sort((a, b) => a.item.startDate.localeCompare(b.item.startDate));
   return candidates[0];
 }
+
+/**
+ * The flight to show a tracker for: the one currently airborne (departed but not
+ * yet arrived) if any, otherwise the next upcoming one. Unlike
+ * `nextUpcomingFlight` (future-only), this surfaces in-progress flights.
+ */
+export function currentOrNextFlight(
+  trips: Trip[],
+  now: Date = new Date(),
+): { trip: Trip; item: ItineraryItem } | undefined {
+  const iso = now.toISOString();
+  const inAir = trips
+    .flatMap((trip) => trip.items.map((item) => ({ trip, item })))
+    .filter(({ item }) => item.type === 'flight' && item.startDate <= iso && (item.endDate ?? '') >= iso)
+    .sort((a, b) => a.item.startDate.localeCompare(b.item.startDate));
+  return inAir[0] ?? nextUpcomingFlight(trips, now);
+}

@@ -44,39 +44,44 @@ const CABINS: CabinLayout[] = [
 const ALL_TAKEN = new Set(CABINS.flatMap((c) => c.taken));
 const DEFAULT_SEAT = '3A'; // Business, matches the iOS default
 
-function cabinForSeat(seat: string): Cabin {
-  const row = parseInt(seat, 10);
-  if (row >= 1 && row <= 2) return 'first';
-  if (row >= 20 && row <= 25) return 'premium';
-  return 'business';
-}
-
 export default function CheckInScreen() {
   const router = useRouter();
   const trips = useTravel((s) => s.trips);
   const markCheckedIn = useCheckIn((s) => s.markCheckedIn);
   const isCheckedIn = useCheckIn((s) => s.isCheckedIn);
+  const getCheckIn = useCheckIn((s) => s.getCheckIn);
 
   const flight = useMemo(() => nextUpcomingFlight(trips), [trips]);
   const derived = useMemo(() => (flight ? deriveFlight(flight.item) : null), [flight]);
-  const alreadyIn = derived ? isCheckedIn(derived.flightNumber) : false;
+  // Key everything by the stable itinerary item id, not the parsed flight number.
+  const alreadyIn = flight ? isCheckedIn(flight.item.id) : false;
 
-  const [seat, setSeat] = useState(DEFAULT_SEAT);
+  // Hydrate the seat from the persisted record so the boarding pass shows the
+  // seat the traveler actually chose (not the default) on re-open.
+  const [seat, setSeat] = useState(
+    () => (flight ? getCheckIn(flight.item.id)?.seat : undefined) ?? DEFAULT_SEAT,
+  );
   const [step, setStep] = useState<Step>(alreadyIn ? 'success' : 'seat');
   const [seatError, setSeatError] = useState<string | null>(null);
   const committed = useRef(alreadyIn); // one-shot guard for success side effects
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear the confirming→success timer on unmount so it can't fire on a torn-down
+  // component (which would silently drop the check-in / leak).
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
   // Commit the check-in as a side effect once we reach the success step — never
   // during render (markCheckedIn is a store write). Guarded so re-renders can't
-  // re-fire it; pre-armed when the flight was already checked in.
+  // re-fire it; pre-armed when the flight was already checked in. Persists the
+  // chosen seat, then folds in the Live Activity id once it resolves.
   useEffect(() => {
-    if (step !== 'success' || !derived || committed.current) return;
+    if (step !== 'success' || !flight || !derived || committed.current) return;
     committed.current = true;
-    markCheckedIn(derived.flightNumber);
-    void FlightLiveActivity.start(toActivityContent({ ...derived, status: 'Boarding' }));
-  }, [step, derived, markCheckedIn]);
-
-  const userCabin = cabinForSeat(seat);
+    markCheckedIn(flight.item.id, { seat });
+    void FlightLiveActivity.start(toActivityContent({ ...derived, status: 'Boarding' })).then((id) => {
+      if (id) markCheckedIn(flight.item.id, { activityId: id });
+    });
+  }, [step, flight, derived, markCheckedIn, seat]);
 
   if (!derived) {
     return (
@@ -93,13 +98,14 @@ export default function CheckInScreen() {
   const gate = derived.gate ?? '—';
 
   const confirm = () => {
+    if (step !== 'seat') return; // ignore re-taps once we've left the seat map
     if (ALL_TAKEN.has(seat)) {
       setSeatError(`Seat ${seat} is no longer available. Please choose another seat.`);
       return;
     }
     setStep('confirming');
     // Simulate the carrier round-trip, then land on the boarding pass.
-    setTimeout(() => setStep('success'), 1500);
+    timer.current = setTimeout(() => setStep('success'), 1500);
   };
 
   // ── Step: seat map ─────────────────────────────────────────────────────────
@@ -127,7 +133,7 @@ export default function CheckInScreen() {
                   {c.letters.map((letter) => {
                     const id = `${row}${letter}`;
                     const taken = c.taken.includes(id);
-                    const selectable = userCabin === c.cabin && !taken;
+                    const selectable = !taken; // any open seat is selectable
                     const selected = seat === id;
                     return (
                       <Pressable
