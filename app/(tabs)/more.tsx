@@ -117,6 +117,8 @@ export default function MoreScreen() {
     translator: '/translator',
     disruption: '/disruption',
     intelligence: '/intelligence',
+    local: '/local',
+    'airport-map': '/airport-map',
   };
 
   const openFeature = (row: Row) => {

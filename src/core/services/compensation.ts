@@ -8,6 +8,8 @@ export interface CompensationInput {
   distanceKm: number;
   delayHours: number;
   cancelled?: boolean;
+  /** Both endpoints within the EU/EEA — caps compensation at €400 (Art. 7(1)(b)). */
+  intraEu?: boolean;
 }
 
 export interface CompensationResult {
@@ -21,10 +23,12 @@ export function estimateCompensation(i: CompensationInput): CompensationResult {
     if (!i.cancelled && i.delayHours < 3) {
       return { eligible: false, note: 'EU261 pays out for arrival delays of 3h+ or cancellations (<14 days notice).' };
     }
-    // Base amount by great-circle distance.
-    let value = i.distanceKm <= 1500 ? 250 : i.distanceKm <= 3500 ? 400 : 600;
-    // Long-haul (>3500km) delays of 3–4h are halved to €300 (Art. 7(2)).
-    if (!i.cancelled && i.distanceKm > 3500 && i.delayHours < 4) value = 300;
+    // Base amount by great-circle distance. Art. 7(1)(b): ALL intra-EU flights
+    // over 1500 km are €400 regardless of distance; the €600 tier is only for
+    // non-intra-EU flights over 3500 km.
+    let value = i.distanceKm <= 1500 ? 250 : i.intraEu || i.distanceKm <= 3500 ? 400 : 600;
+    // Art. 7(2): non-intra-EU >3500 km delays of 3–4h are halved to €300.
+    if (!i.cancelled && !i.intraEu && i.distanceKm > 3500 && i.delayHours < 4) value = 300;
     return {
       eligible: true,
       amount: { value, currency: 'EUR' },

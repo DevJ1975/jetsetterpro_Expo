@@ -19,16 +19,18 @@ export default function DisruptionScreen() {
 
   // Compensation calculator state.
   const [region, setRegion] = useState<Region>('EU');
+  const [intraEu, setIntraEu] = useState<'yes' | 'no'>('no');
   const [delay, setDelay] = useState('3.5');
   const [distance, setDistance] = useState('2500');
   const comp = useMemo(
     () =>
       estimateCompensation({
         region,
+        intraEu: region === 'EU' && intraEu === 'yes',
         delayHours: parseFloat(delay) || 0,
         distanceKm: parseFloat(distance) || 0,
       }),
-    [region, delay, distance],
+    [region, intraEu, delay, distance],
   );
 
   // Demo disruption: mark the soonest flight delayed so the loop is demonstrable.
@@ -99,6 +101,17 @@ export default function DisruptionScreen() {
                 labelOf={(r) => (r === 'EU' ? 'EU / EEA' : r === 'US' ? 'US' : 'Other')}
               />
             </View>
+            {region === 'EU' ? (
+              <View style={{ gap: spacing.sm }}>
+                <Text style={[type.overline, { color: '#8B92A8' }]}>Both airports in EU/EEA?</Text>
+                <Chips
+                  options={['no', 'yes'] as ('no' | 'yes')[]}
+                  value={intraEu}
+                  onChange={setIntraEu}
+                  labelOf={(v) => (v === 'yes' ? 'Yes (intra-EU)' : 'No')}
+                />
+              </View>
+            ) : null}
             <View style={{ flexDirection: 'row', gap: spacing.md }}>
               <Input label="Delay (hours)" value={delay} onChangeText={setDelay} keyboardType="decimal-pad" style={{ flex: 1 }} />
               <Input label="Distance (km)" value={distance} onChangeText={setDistance} keyboardType="number-pad" style={{ flex: 1 }} />

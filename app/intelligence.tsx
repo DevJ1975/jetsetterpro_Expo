@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Button, Card, SectionLabel, palette, spacing, type } from '@/src/ui';
 import { Screen } from '@/src/features/common/Screen';
@@ -29,10 +29,18 @@ export default function IntelligenceScreen() {
   const checkedIn = useCheckIn((s) => s.checkedIn);
   const queuePrompt = useIris((s) => s.queuePrompt);
 
+  // Re-derive on a low-frequency tick so time-window nudges (check-in opening,
+  // leave-by, weather) surface and clear while the screen stays mounted.
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   const active = useMemo(
     () => evaluateSuggestions(trips, isCheckedIn, new Date()).filter((s) => !dismissed.includes(s.dismissalKey)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [trips, dismissed, checkedIn],
+    [trips, dismissed, checkedIn, tick],
   );
 
   const talk = (prompt: string) => {
