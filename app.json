@@ -51,6 +51,12 @@
           "calendarPermission": "JetSetter Pro adds your trips and flights to your calendar."
         }
       ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Unlock your Document Vault with Face ID."
+        }
+      ],
       "expo-dev-client"
     ],
     "experiments": {

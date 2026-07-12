@@ -89,6 +89,7 @@ export const useIrisRouter = create<IrisRouterState>((set) => ({
     const real: Partial<Record<Destination, string>> = {
       packingList: '/packing',
       currency: '/currency',
+      documentVault: '/vault',
     };
     const realHref = real[dest];
     if (realHref) {

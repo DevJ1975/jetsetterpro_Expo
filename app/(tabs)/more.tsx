@@ -103,6 +103,15 @@ export default function MoreScreen() {
     settings: '/settings',
     ground: '/ground',
     carbon: '/carbon',
+    vault: '/vault',
+    rental: '/rental',
+    about: '/about',
+    journal: '/journal',
+    board: '/board',
+    'expense-export': '/expense-export',
+    departure: '/departure',
+    offline: '/offline',
+    inflight: '/inflight',
   };
 
   const openFeature = (row: Row) => {
