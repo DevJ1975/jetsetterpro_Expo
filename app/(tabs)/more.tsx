@@ -109,6 +109,9 @@ export default function MoreScreen() {
     journal: '/journal',
     board: '/board',
     'expense-export': '/expense-export',
+    departure: '/departure',
+    offline: '/offline',
+    inflight: '/inflight',
   };
 
   const openFeature = (row: Row) => {
