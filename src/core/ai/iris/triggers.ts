@@ -28,7 +28,7 @@ export function extractFlightNumber(title: string): string | null {
 /** Ordered candidate suggestions (highest priority first). */
 export function evaluateSuggestions(
   trips: Trip[],
-  isCheckedIn: (flightNumber: string) => boolean,
+  isCheckedIn: (itemId: string) => boolean,
   now: Date = new Date(),
 ): IrisSuggestion[] {
   const out: IrisSuggestion[] = [];
@@ -38,7 +38,7 @@ export function evaluateSuggestions(
   if (flight) {
     const hrs = daysUntil(flight.item.startDate, now) * 24;
     const fn = extractFlightNumber(flight.item.title) ?? flight.item.title;
-    if (hrs > 0 && hrs < 24 && !isCheckedIn(fn)) {
+    if (hrs > 0 && hrs < 24 && !isCheckedIn(flight.item.id)) {
       out.push({
         kind: 'checkInWindow',
         icon: 'checkmark-circle',

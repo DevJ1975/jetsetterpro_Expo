@@ -64,6 +64,7 @@
           "speechRecognitionPermission": "JetSetter Pro transcribes your speech so IRIS can understand what you ask."
         }
       ],
+      "@bacons/apple-targets",
       "expo-dev-client"
     ],
     "experiments": {

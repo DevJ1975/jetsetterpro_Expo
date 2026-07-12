@@ -91,6 +91,8 @@ export const useIrisRouter = create<IrisRouterState>((set) => ({
       currency: '/currency',
       documentVault: '/vault',
       disruption: '/disruption',
+      checkIn: '/checkin',
+      flightTracker: '/flight',
     };
     const realHref = real[dest];
     if (realHref) {

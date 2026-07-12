@@ -314,14 +314,22 @@ export async function executeIrisTool(
     case 'checkInForFlight': {
       const explicit = str(input, 'flightNumber');
       const next = nextUpcomingFlight(travel.trips);
+      // Resolve to a concrete itinerary item so check-in is keyed by the stable
+      // item id (matching the Check-In screen), not a display string.
+      const matched = explicit
+        ? travel.trips
+            .flatMap((t) => t.items)
+            .find((i) => i.type === 'flight' && i.title.toUpperCase().includes(explicit.toUpperCase()))
+        : undefined;
+      const item = matched ?? next?.item;
       const flight = explicit ?? next?.item.title ?? '';
-      if (!flight) return { content: 'No upcoming flight to check in for.' };
+      if (!item || !flight) return { content: 'No upcoming flight to check in for.' };
       const summary = `Check in for ${flight}`;
       return stage(
         'checkIn',
         summary,
         async () => {
-          useCheckIn.getState().markCheckedIn(flight);
+          useCheckIn.getState().markCheckedIn(item.id);
           return `Checked in for ${flight}.`;
         },
         `Prepared: ${summary}. Ask the user to confirm — not checked in yet.`,
