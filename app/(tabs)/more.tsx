@@ -96,7 +96,12 @@ export default function MoreScreen() {
   const setAll = useTravel((s) => s.setAll);
 
   // Ported screens route directly; everything else lands on the shared "coming soon".
-  const REAL_ROUTES: Record<string, string> = { packing: '/packing', currency: '/currency' };
+  const REAL_ROUTES: Record<string, string> = {
+    packing: '/packing',
+    currency: '/currency',
+    wallet: '/wallet',
+    loyalty: '/loyalty',
+  };
 
   const openFeature = (row: Row) => {
     const real = REAL_ROUTES[row.slug];
