@@ -115,6 +115,8 @@ export default function MoreScreen() {
     luggage: '/luggage',
     booking: '/booking',
     translator: '/translator',
+    disruption: '/disruption',
+    intelligence: '/intelligence',
   };
 
   const openFeature = (row: Row) => {
