@@ -85,20 +85,26 @@ export const useIris = create<IrisChatState>((set, get) => ({
     // Live path — Claude via the ai-iris Edge Function, with the tool loop.
     let acc = '';
     try {
-      const convo = await runIrisConversation({
+      const result = await runIrisConversation({
         system: buildSystemPrompt(),
         messages: [...s.apiMessages, apiUser],
         tools: IRIS_TOOLS,
         executeTool: executeIrisTool,
+        // Reset the live buffer each turn so the streamed bubble shows only the
+        // current turn's text (not intermediate tool-round text concatenated).
+        onTurnStart: () => {
+          acc = '';
+          set({ streamingContent: '' });
+        },
         onText: (delta) => {
           acc += delta;
           set({ streamingContent: acc });
         },
       });
-      const finalText = acc.trim() || 'Done.';
+      const finalText = result.finalText.trim() || 'Done.';
       set((st) => ({
         messages: [...st.messages, { id: makeId(), role: 'assistant', text: finalText }],
-        apiMessages: convo,
+        apiMessages: result.messages,
         isResponding: false,
         streamingContent: '',
       }));
@@ -115,18 +121,22 @@ export const useIris = create<IrisChatState>((set, get) => ({
   },
 
   confirmPending: async () => {
+    // Don't race an in-flight turn — its final `apiMessages` write would clobber
+    // this append, and the transcript must stay role-alternating.
+    if (get().isResponding) return;
     const pending = useIrisRouter.getState().pendingAction;
     if (!pending) return;
     // Clear optimistically BEFORE awaiting so the card can't double-commit.
     useIrisRouter.getState().cancel();
     const result = await pending.commit();
-    set((st) => ({
-      messages: [...st.messages, { id: makeId(), role: 'assistant', text: result }],
-      apiMessages: [...st.apiMessages, { role: 'assistant', content: result }],
-    }));
+    // Display-only: appending to apiMessages here would create two consecutive
+    // assistant turns (the model's "prepared…" turn already ended the exchange),
+    // which Anthropic rejects. The commit result shows in the transcript instead.
+    set((st) => ({ messages: [...st.messages, { id: makeId(), role: 'assistant', text: result }] }));
   },
 
   cancelPending: () => {
+    if (get().isResponding) return;
     useIrisRouter.getState().cancel();
     set((st) => ({
       messages: [

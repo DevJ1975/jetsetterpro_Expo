@@ -20,6 +20,29 @@ const ALLOWED_MODELS = new Set([
 ]);
 const DEFAULT_MODEL = 'claude-sonnet-5';
 
+// Request-shape bounds (defense against cost abuse / oversized payloads).
+const MAX_MESSAGES = 60;
+const MAX_BODY_BYTES = 256 * 1024;
+const MIN_TOKENS = 64;
+const MAX_TOKENS = 4096;
+
+// Best-effort per-user rate limit. NOTE: in-memory state is per-isolate and not
+// durable across Edge instances — a Postgres/Upstash-backed limiter is the
+// follow-up for hard guarantees. This still throttles a hot loop within an isolate.
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX = 30;
+const hits = new Map<string, number[]>();
+function rateLimited(userId: string, now: number): boolean {
+  const recent = (hits.get(userId) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
+  if (recent.length >= RATE_MAX) {
+    hits.set(userId, recent);
+    return true;
+  }
+  recent.push(now);
+  hits.set(userId, recent);
+  return false;
+}
+
 const cors: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -57,6 +80,12 @@ Deno.serve(async (req: Request) => {
   } = await supabase.auth.getUser();
   if (authErr || !user) return json({ error: 'unauthorized' }, 401);
 
+  const now = Date.now();
+  if (rateLimited(user.id, now)) return json({ error: 'rate_limited' }, 429);
+
+  const raw = await req.text();
+  if (raw.length > MAX_BODY_BYTES) return json({ error: 'payload_too_large' }, 413);
+
   let body: {
     model?: string;
     max_tokens?: number;
@@ -67,31 +96,46 @@ Deno.serve(async (req: Request) => {
     stream?: boolean;
   };
   try {
-    body = await req.json();
+    body = JSON.parse(raw);
   } catch {
     return json({ error: 'bad_request' }, 400);
   }
 
+  if (!Array.isArray(body.messages) || body.messages.length === 0) {
+    return json({ error: 'messages_required' }, 400);
+  }
+  if (body.messages.length > MAX_MESSAGES) return json({ error: 'too_many_messages' }, 400);
+
   const model = body.model && ALLOWED_MODELS.has(body.model) ? body.model : DEFAULT_MODEL;
+  const maxTokens = Math.max(
+    MIN_TOKENS,
+    Math.min(MAX_TOKENS, typeof body.max_tokens === 'number' ? body.max_tokens : 1024),
+  );
   const payload = {
     model,
-    max_tokens: Math.min(body.max_tokens ?? 1024, 4096),
+    max_tokens: maxTokens,
     system: body.system,
-    messages: body.messages ?? [],
+    messages: body.messages,
     tools: body.tools,
     tool_choice: body.tool_choice,
     stream: body.stream !== false,
   };
 
-  const upstream = await fetch(ANTHROPIC_URL, {
-    method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
+  let upstream: Response;
+  try {
+    upstream = await fetch(ANTHROPIC_URL, {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    // Controlled failure with CORS headers (never surface upstream internals).
+    return json({ error: 'ai_upstream_error' }, 502);
+  }
 
   // Pass the upstream body (SSE stream when streaming, JSON otherwise) through.
   return new Response(upstream.body, {

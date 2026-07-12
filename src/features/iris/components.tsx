@@ -118,13 +118,16 @@ export function ConfirmationCard() {
   const pending = useIrisRouter((s) => s.pendingAction);
   const confirmPending = useIris((s) => s.confirmPending);
   const cancelPending = useIris((s) => s.cancelPending);
+  const isResponding = useIris((s) => s.isResponding);
   const [committing, setCommitting] = useState(false);
 
   if (!pending) return null;
   const meta = KIND_META[pending.kind];
+  // Block confirm/cancel until the streaming turn finishes (it owns apiMessages).
+  const busy = committing || isResponding;
 
   const onConfirm = async () => {
-    if (committing) return;
+    if (busy) return;
     setCommitting(true);
     await confirmPending();
     setCommitting(false);
@@ -151,7 +154,7 @@ export function ConfirmationCard() {
       <View style={{ flexDirection: 'row', gap: spacing.md }}>
         <Pressable
           onPress={cancelPending}
-          disabled={committing}
+          disabled={busy}
           style={{
             flex: 1,
             height: 44,
@@ -159,13 +162,14 @@ export function ConfirmationCard() {
             backgroundColor: 'rgba(255,255,255,0.08)',
             alignItems: 'center',
             justifyContent: 'center',
+            opacity: busy ? 0.5 : 1,
           }}
         >
           <Text style={[type.body, { color: palette.text, fontWeight: '700' }]}>Cancel</Text>
         </Pressable>
         <Pressable
           onPress={onConfirm}
-          disabled={committing}
+          disabled={busy}
           style={{
             flex: 1,
             height: 44,
@@ -173,6 +177,7 @@ export function ConfirmationCard() {
             backgroundColor: palette.accent,
             alignItems: 'center',
             justifyContent: 'center',
+            opacity: busy ? 0.6 : 1,
           }}
         >
           {committing ? (
