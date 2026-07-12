@@ -1,35 +1,39 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { palette } from '@/src/ui';
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+const TAB_ICON: Record<string, string> = {
+  index: 'home',
+  itinerary: 'calendar',
+  iris: 'sparkles',
+  expenses: 'stats-chart',
+  more: 'ellipsis-horizontal-circle',
+};
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+      screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
-        }}
-      />
+        tabBarActiveTintColor: palette.bright,
+        tabBarInactiveTintColor: palette.faint,
+        tabBarStyle: {
+          backgroundColor: 'rgba(10,13,22,0.96)',
+          borderTopColor: palette.line,
+          borderTopWidth: 1,
+        },
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '600', letterSpacing: 0.4 },
+        tabBarIcon: ({ color, size }) => (
+          <Ionicons name={(TAB_ICON[route.name] ?? 'ellipse') as never} size={size} color={color} />
+        ),
+      })}
+    >
+      <Tabs.Screen name="index" options={{ title: 'Home' }} />
+      <Tabs.Screen name="itinerary" options={{ title: 'Itinerary' }} />
+      <Tabs.Screen name="iris" options={{ title: 'IRIS' }} />
+      <Tabs.Screen name="expenses" options={{ title: 'Expenses' }} />
+      <Tabs.Screen name="more" options={{ title: 'More' }} />
     </Tabs>
   );
 }
