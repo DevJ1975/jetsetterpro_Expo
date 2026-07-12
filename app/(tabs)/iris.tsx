@@ -18,6 +18,8 @@ import {
   MessageBubble,
   ThinkingDots,
 } from '@/src/features/iris/components';
+import { MicButton, VoiceBar } from '@/src/features/iris/voice/VoiceBar';
+import { useIrisVoice } from '@/src/features/iris/voice/useIrisVoice';
 import { composeGreeting } from '@/src/core/ai/iris/agent';
 import { useIris } from '@/src/core/store/iris';
 import { useIrisMemory } from '@/src/core/store/irisMemory';
@@ -47,7 +49,30 @@ export default function IrisScreen() {
     }, [queuedPrompt, consumeQueuedPrompt, send]),
   );
 
-  const canSend = draft.trim().length > 0 && !isResponding;
+  // Voice loop bridge: a spoken utterance runs the same send path as typing,
+  // then IRIS's final reply is read back aloud.
+  const onUtterance = useCallback(
+    async (text: string): Promise<string | null> => {
+      await send(text);
+      const msgs = useIris.getState().messages;
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        if (msgs[i].role === 'assistant') return msgs[i].text;
+      }
+      return null;
+    },
+    [send],
+  );
+  const voice = useIrisVoice(onUtterance);
+  const voiceActive = voice.state !== 'idle';
+
+  // Stop the voice loop when leaving the tab so the mic never lingers.
+  useFocusEffect(
+    useCallback(() => {
+      return () => voice.stop();
+    }, [voice]),
+  );
+
+  const canSend = draft.trim().length > 0 && !isResponding && !voiceActive;
   const dispatch = () => {
     if (!canSend) return;
     const text = draft;
@@ -101,6 +126,13 @@ export default function IrisScreen() {
           </ScrollView>
 
           <ConfirmationCard />
+          <VoiceBar voice={voice} />
+
+          {voice.status ? (
+            <Text style={[type.caption, { color: palette.faint, paddingHorizontal: spacing.xl, marginBottom: spacing.xs }]}>
+              {voice.status}
+            </Text>
+          ) : null}
 
           <View
             style={{
@@ -114,13 +146,14 @@ export default function IrisScreen() {
               borderTopColor: palette.line,
             }}
           >
+            <MicButton active={voiceActive} onPress={voice.toggle} />
             <TextInput
-              value={draft}
+              value={voiceActive ? '' : draft}
               onChangeText={setDraft}
-              placeholder="Ask IRIS anything…"
+              placeholder={voiceActive ? 'Voice mode — speak to IRIS' : 'Ask IRIS anything…'}
               placeholderTextColor={palette.faint}
               multiline
-              editable={!isResponding}
+              editable={!isResponding && !voiceActive}
               style={{
                 flex: 1,
                 minHeight: 44,
