@@ -6,7 +6,7 @@ import { formatDateRange, makeId, toISODate } from '@/src/core/format';
 import { addTripToCalendar } from '@/src/core/services/calendar';
 import { useCheckIn } from '@/src/core/store/checkin';
 import { useIrisMemory, type MemoryCategory } from '@/src/core/store/irisMemory';
-import { useIrisRouter, type Destination } from '@/src/core/store/irisRouter';
+import { useIrisRouter, type Destination, type PendingKind } from '@/src/core/store/irisRouter';
 import { activeOrNextTrip, nextUpcomingFlight, useTravel } from '@/src/core/store/travel';
 import type { ExpenseCategory } from '@/src/types/models';
 
@@ -195,6 +195,27 @@ export async function executeIrisTool(
   const travel = useTravel.getState();
   const router = useIrisRouter.getState();
 
+  // Stage a confirm-before-commit action. Guards the single pendingAction slot:
+  // a re-invocation with the same summary is idempotent (keeps the parked one),
+  // and a *different* action while one is still awaiting confirmation is refused
+  // rather than silently overwriting it — otherwise a follow-up turn (typed or
+  // hands-free voice) could swap the card out from under a pending "yes".
+  const stage = (
+    kind: PendingKind,
+    summary: string,
+    commit: () => Promise<string>,
+    prepared: string,
+  ): AgentToolResult => {
+    const existing = useIrisRouter.getState().pendingAction;
+    if (existing && existing.summary !== summary) {
+      return {
+        content: `There's already an action awaiting confirmation: "${existing.summary}". Ask the user to confirm or cancel that one before staging another.`,
+      };
+    }
+    if (!existing) router.propose({ id: makeId(), kind, summary, commit });
+    return { content: prepared };
+  };
+
   switch (name) {
     case 'getUserTrips': {
       const filter = str(input, 'filter') ?? 'upcoming';
@@ -261,16 +282,15 @@ export async function executeIrisTool(
       const currency = (str(input, 'currency') ?? 'USD').toUpperCase().slice(0, 3);
       const category = EXPENSE_CATEGORY_MAP[str(input, 'category') ?? 'other'] ?? 'OTHER';
       const summary = `Log ${currency} ${amount.toFixed(2)} at ${merchant} (${category})`;
-      router.propose({
-        id: makeId(),
-        kind: 'logExpense',
+      return stage(
+        'logExpense',
         summary,
-        commit: async () => {
+        async () => {
           travel.addExpense({ id: makeId(), amount, currency, category, merchant, date: toISODate() });
           return `Logged ${currency} ${amount.toFixed(2)} at ${merchant}.`;
         },
-      });
-      return { content: `Prepared: ${summary}. Ask the user to confirm — not saved yet.` };
+        `Prepared: ${summary}. Ask the user to confirm — not saved yet.`,
+      );
     }
 
     case 'addTrip': {
@@ -280,16 +300,15 @@ export async function executeIrisTool(
       if (!destination || !startDate || !endDate) return { content: 'Need destination and both dates.', isError: true };
       const name = str(input, 'name') ?? `Trip to ${destination}`;
       const summary = `Add trip "${name}" — ${destination} (${formatDateRange(startDate, endDate)})`;
-      router.propose({
-        id: makeId(),
-        kind: 'addTrip',
+      return stage(
+        'addTrip',
         summary,
-        commit: async () => {
+        async () => {
           travel.addTrip({ id: makeId(), name, destination, startDate, endDate, items: [] });
           return `Added trip "${name}".`;
         },
-      });
-      return { content: `Prepared: ${summary}. Ask the user to confirm — not added yet.` };
+        `Prepared: ${summary}. Ask the user to confirm — not added yet.`,
+      );
     }
 
     case 'checkInForFlight': {
@@ -298,48 +317,45 @@ export async function executeIrisTool(
       const flight = explicit ?? next?.item.title ?? '';
       if (!flight) return { content: 'No upcoming flight to check in for.' };
       const summary = `Check in for ${flight}`;
-      router.propose({
-        id: makeId(),
-        kind: 'checkIn',
+      return stage(
+        'checkIn',
         summary,
-        commit: async () => {
+        async () => {
           useCheckIn.getState().markCheckedIn(flight);
           return `Checked in for ${flight}.`;
         },
-      });
-      return { content: `Prepared: ${summary}. Ask the user to confirm — not checked in yet.` };
+        `Prepared: ${summary}. Ask the user to confirm — not checked in yet.`,
+      );
     }
 
     case 'generatePackingList': {
       const trip = resolveTrip(str(input, 'tripName'));
       if (!trip) return { content: 'No trip found to pack for.' };
       const summary = `Generate a packing list for ${trip.name}`;
-      router.propose({
-        id: makeId(),
-        kind: 'generatePackingList',
+      return stage(
+        'generatePackingList',
         summary,
-        commit: async () => {
+        async () => {
           router.navigateTo('packingList');
           return `Opened Smart Packing List for ${trip.name}.`;
         },
-      });
-      return { content: `Prepared: ${summary}. Ask the user to confirm — not generated yet.` };
+        `Prepared: ${summary}. Ask the user to confirm — not generated yet.`,
+      );
     }
 
     case 'addToCalendar': {
       const trip = resolveTrip(str(input, 'tripName'));
       if (!trip) return { content: 'No trip found to add.' };
       const summary = `Add ${trip.name} to your Calendar`;
-      router.propose({
-        id: makeId(),
-        kind: 'addToCalendar',
+      return stage(
+        'addToCalendar',
         summary,
-        commit: async () => {
+        async () => {
           const r = await addTripToCalendar(trip);
           return r ? `Added ${r.added} event(s) to your calendar.` : `Couldn't access the calendar.`;
         },
-      });
-      return { content: `Prepared: ${summary}. Ask the user to confirm — nothing added yet.` };
+        `Prepared: ${summary}. Ask the user to confirm — nothing added yet.`,
+      );
     }
 
     default:

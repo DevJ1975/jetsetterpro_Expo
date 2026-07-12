@@ -12,13 +12,21 @@ const LABEL: Record<Exclude<VoiceState, 'idle'>, string> = {
 };
 
 /** Mic toggle for the composer row. Filled/red while a voice session is live. */
-export function MicButton({ active, onPress }: { active: boolean; onPress: () => void }) {
+export function MicButton({
+  active,
+  disabled = false,
+  onPress,
+}: {
+  active: boolean;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
   return (
-    <Pressable onPress={onPress} hitSlop={8} style={{ paddingBottom: 6 }}>
+    <Pressable onPress={onPress} disabled={disabled} hitSlop={8} style={{ paddingBottom: 6 }}>
       <Ionicons
         name={active ? 'stop-circle' : 'mic-outline'}
         size={32}
-        color={active ? '#F0616E' : palette.bright}
+        color={active ? '#F0616E' : disabled ? 'rgba(255,255,255,0.25)' : palette.bright}
       />
     </Pressable>
   );
