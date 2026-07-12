@@ -32,8 +32,10 @@ const WMO: Record<number, string> = {
   99: 'Thunderstorm',
 };
 
-async function geocode(city: string): Promise<{ lat: number; lon: number } | null> {
+// Open-Meteo geocoding — keyless, shared by weather + places lookups.
+export async function geocodeCity(city: string): Promise<{ lat: number; lon: number } | null> {
   const q = city.split(',')[0].trim();
+  if (!q) return null;
   const r = await fetch(
     `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1`,
   );
@@ -44,7 +46,7 @@ async function geocode(city: string): Promise<{ lat: number; lon: number } | nul
 }
 
 export async function fetchWeather(city: string): Promise<Weather | null> {
-  const g = await geocode(city);
+  const g = await geocodeCity(city);
   if (!g) return null;
   const r = await fetch(
     `https://api.open-meteo.com/v1/forecast?latitude=${g.lat}&longitude=${g.lon}&current=temperature_2m,weather_code`,

@@ -39,6 +39,29 @@ In the [Firebase console](https://console.firebase.google.com/project/jetsetter-
 Without step 3–4, the app still runs and syncs trips/expenses; **IRIS falls back
 to demo responses** until `aiIris` is deployed and the endpoint is set.
 
+## Turnkey deploy (owner's machine)
+
+Deploy must run where you're signed in to Google — it can't run in CI/agent
+sandboxes (no Firebase credentials there). One-time prerequisites:
+
+```bash
+npm i -g firebase-tools     # install the CLI
+firebase login              # authenticate as the project owner
+firebase functions:secrets:set ANTHROPIC_API_KEY   # paste your Anthropic key (once)
+```
+
+Then, from the repo root, the convenience scripts wrap the CLI:
+
+```bash
+npm run deploy:rules        # Firestore security rules only
+npm run deploy:functions    # installs functions deps, deploys aiIris
+npm run deploy:backend      # both rules + functions in one shot
+```
+
+After the first `deploy:functions`, copy the printed `aiIris` URL into
+`.env.local` as `EXPO_PUBLIC_AI_ENDPOINT` (see step 4 above) and restart the
+bundler so the app picks it up.
+
 ## Security
 
 - Firestore rules (`firebase/firestore.rules`) enforce `request.auth.uid == uid` —
