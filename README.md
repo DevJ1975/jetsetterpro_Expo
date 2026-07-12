@@ -1,50 +1,56 @@
-# Welcome to your Expo app 👋
+# JetSetter Pro — React Native (Expo)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Cross-platform (iOS + Android) rewrite of the native SwiftUI **JetSetter Pro** app,
+built on **Expo SDK 54** (React Native 0.81, React 19, New Architecture). The goal is a
+single codebase that reaches feature parity with the iOS app while reusing the same
+**Supabase** backend (shared schema-v1: `public.trips` + `public.expenses`).
 
-## Get started
+## Status — Phase 1: Foundation + core tabs
 
-1. Install dependencies
+- ✅ Expo SDK 54 + expo-router (file-based) app shell, dark-first
+- ✅ Design system from `src/ui` (the shipped JetSetter kit: tokens + 10 components)
+- ✅ 5-tab navigation: Home · Itinerary · IRIS · Expenses · More
+- ✅ Onboarding → profile/home-airport/currency
+- ✅ Supabase anonymous-first auth + two-way trips/expenses sync
+- ✅ Local-first store (AsyncStorage-persisted) + demo/mock mode
+- ✅ Home dashboard, Itinerary (trips/items + calendar sync), Expenses (+ category breakdown)
+- ⏳ Next phases: IRIS (Claude via Edge Function), native targets (Live Activities,
+  PassKit, Siri, Watch), and the remaining ~30 feature modules
 
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Getting started
 
 ```bash
-npm run reset-project
+npm install
+cp .env.example .env.local   # add your Supabase URL + anon key
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+This app uses **native modules** (secure-store, calendar, dev-client), so it runs in a
+**development build**, not Expo Go once native targets land. For the current phase:
 
-## Learn more
+```bash
+npx expo start            # dev server (Expo Go works for the JS-only foundation)
+# or a dev build:
+npx expo run:ios          # requires macOS + Xcode
+npx expo run:android      # requires Android SDK
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+EAS build profiles live in `eas.json` (`development` = dev-client). Native folders are
+generated via `npx expo prebuild` (Continuous Native Generation) — they are git-ignored.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Architecture
 
-## Join the community
+```
+app/            expo-router routes (root layout, onboarding, (tabs)/, trip/[id], modals)
+src/ui/         design system (theme tokens + components) — the uploaded JetSetter kit
+src/types/      TypeScript models ported from the Swift Codable structs + Supabase schema
+src/core/
+  env.ts        env + config (Supabase URL/anon key)
+  supabase/     client, anonymous-first auth, two-way sync (trips/expenses)
+  store/        Zustand stores (preferences, travel, session, subscription)
+  persistence/  AsyncStorage KV + expo-secure-store wrappers
+  demo/         mock data + demo-mode seeding (mirrors the iOS MockDataService)
+  api/          typed clients for keyless public APIs (Open-Meteo weather, FX)
+src/features/   feature UI (common Screen/PremiumGate/ComingSoon, home, expenses, …)
+```
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+See `docs/design-kit/` for the original design-system README + example screen.

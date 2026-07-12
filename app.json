@@ -1,19 +1,22 @@
 {
   "expo": {
-    "name": "jsp-scaffold",
-    "slug": "jsp-scaffold",
+    "name": "JetSetter Pro",
+    "slug": "jetsetter-pro",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "jspscaffold",
-    "userInterfaceStyle": "automatic",
+    "scheme": "jetsetterpro",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#06070D",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.jetsetterpro.app"
     },
     "android": {
+      "package": "com.jetsetterpro.app",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#06070D",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -33,16 +36,25 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "backgroundColor": "#000000"
-          }
+          "backgroundColor": "#06070D"
         }
-      ]
+      ],
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": "JetSetter Pro uses Face ID to unlock your encrypted Document Vault."
+        }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "JetSetter Pro adds your trips and flights to your calendar."
+        }
+      ],
+      "expo-dev-client"
     ],
     "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+      "typedRoutes": true
     }
   }
 }
