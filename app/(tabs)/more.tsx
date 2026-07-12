@@ -112,6 +112,9 @@ export default function MoreScreen() {
     departure: '/departure',
     offline: '/offline',
     inflight: '/inflight',
+    luggage: '/luggage',
+    booking: '/booking',
+    translator: '/translator',
   };
 
   const openFeature = (row: Row) => {
