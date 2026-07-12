@@ -57,6 +57,13 @@
           "faceIDPermission": "Unlock your Document Vault with Face ID."
         }
       ],
+      [
+        "@react-native-voice/voice",
+        {
+          "microphonePermission": "JetSetter Pro uses the microphone so you can talk to IRIS hands-free.",
+          "speechRecognitionPermission": "JetSetter Pro transcribes your speech so IRIS can understand what you ask."
+        }
+      ],
       "expo-dev-client"
     ],
     "experiments": {

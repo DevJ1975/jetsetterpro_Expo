@@ -18,9 +18,16 @@ import {
   MessageBubble,
   ThinkingDots,
 } from '@/src/features/iris/components';
+import { MicButton, VoiceBar } from '@/src/features/iris/voice/VoiceBar';
+import { useIrisVoice } from '@/src/features/iris/voice/useIrisVoice';
 import { composeGreeting } from '@/src/core/ai/iris/agent';
 import { useIris } from '@/src/core/store/iris';
 import { useIrisMemory } from '@/src/core/store/irisMemory';
+import { useIrisRouter } from '@/src/core/store/irisRouter';
+
+// Spoken yes/no so hands-free voice can confirm a staged action without a tap.
+const AFFIRM = /^(yes|yeah|yep|yup|sure|ok(ay)?|confirm(ed)?|do it|go ahead|please do|correct|sounds good)\b/i;
+const DENY = /^(no|nope|nah|cancel|don'?t|do not|never ?mind|forget it|skip it)\b/i;
 
 export default function IrisScreen() {
   const router = useRouter();
@@ -29,6 +36,8 @@ export default function IrisScreen() {
   const isResponding = useIris((s) => s.isResponding);
   const send = useIris((s) => s.send);
   const clear = useIris((s) => s.clear);
+  const confirmPending = useIris((s) => s.confirmPending);
+  const cancelPending = useIris((s) => s.cancelPending);
   const queuedPrompt = useIris((s) => s.queuedPrompt);
   const consumeQueuedPrompt = useIris((s) => s.consumeQueuedPrompt);
   const knownPrefs = useIrisMemory((s) => s.preferences.length);
@@ -47,7 +56,52 @@ export default function IrisScreen() {
     }, [queuedPrompt, consumeQueuedPrompt, send]),
   );
 
-  const canSend = draft.trim().length > 0 && !isResponding;
+  // Voice loop bridge: a spoken utterance runs the same send path as typing,
+  // then IRIS's final reply is read back aloud. If IRIS has staged a
+  // confirm-before-commit action, a spoken "yes"/"no" resolves it hands-free
+  // instead of dead-ending on the (tap-only) confirmation card.
+  const onUtterance = useCallback(
+    async (text: string): Promise<string | null> => {
+      const lastAssistant = (): string | null => {
+        const msgs = useIris.getState().messages;
+        for (let i = msgs.length - 1; i >= 0; i--) {
+          if (msgs[i].role === 'assistant') return msgs[i].text;
+        }
+        return null;
+      };
+      const trimmed = text.trim();
+      if (useIrisRouter.getState().pendingAction) {
+        if (AFFIRM.test(trimmed)) {
+          await confirmPending();
+          return lastAssistant();
+        }
+        if (DENY.test(trimmed)) {
+          cancelPending();
+          return lastAssistant();
+        }
+      }
+      await send(text);
+      return lastAssistant();
+    },
+    [send, confirmPending, cancelPending],
+  );
+  const voice = useIrisVoice(onUtterance);
+  const voiceActive = voice.state !== 'idle';
+
+  // Stop the voice loop when leaving the tab so the mic never lingers. Depend on
+  // the stable `voice.stop` (not the whole `voice` object, which is a new
+  // reference every render — that would tear the loop down on each state change).
+  const stopVoice = voice.stop;
+  useFocusEffect(
+    useCallback(() => {
+      return () => stopVoice();
+    }, [stopVoice]),
+  );
+
+  const canSend = draft.trim().length > 0 && !isResponding && !voiceActive;
+  // Don't let voice start mid-way through a typed turn — its reply read-back
+  // would race the streaming response.
+  const micDisabled = isResponding && !voiceActive;
   const dispatch = () => {
     if (!canSend) return;
     const text = draft;
@@ -101,6 +155,13 @@ export default function IrisScreen() {
           </ScrollView>
 
           <ConfirmationCard />
+          <VoiceBar voice={voice} />
+
+          {voice.status ? (
+            <Text style={[type.caption, { color: palette.faint, paddingHorizontal: spacing.xl, marginBottom: spacing.xs }]}>
+              {voice.status}
+            </Text>
+          ) : null}
 
           <View
             style={{
@@ -114,13 +175,14 @@ export default function IrisScreen() {
               borderTopColor: palette.line,
             }}
           >
+            <MicButton active={voiceActive} disabled={micDisabled} onPress={voice.toggle} />
             <TextInput
-              value={draft}
+              value={voiceActive ? '' : draft}
               onChangeText={setDraft}
-              placeholder="Ask IRIS anything…"
+              placeholder={voiceActive ? 'Voice mode — speak to IRIS' : 'Ask IRIS anything…'}
               placeholderTextColor={palette.faint}
               multiline
-              editable={!isResponding}
+              editable={!isResponding && !voiceActive}
               style={{
                 flex: 1,
                 minHeight: 44,

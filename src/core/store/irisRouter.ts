@@ -90,6 +90,7 @@ export const useIrisRouter = create<IrisRouterState>((set) => ({
       packingList: '/packing',
       currency: '/currency',
       documentVault: '/vault',
+      disruption: '/disruption',
     };
     const realHref = real[dest];
     if (realHref) {

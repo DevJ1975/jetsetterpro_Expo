@@ -112,6 +112,13 @@ export default function MoreScreen() {
     departure: '/departure',
     offline: '/offline',
     inflight: '/inflight',
+    luggage: '/luggage',
+    booking: '/booking',
+    translator: '/translator',
+    disruption: '/disruption',
+    intelligence: '/intelligence',
+    local: '/local',
+    'airport-map': '/airport-map',
   };
 
   const openFeature = (row: Row) => {
