@@ -44,6 +44,7 @@ const CATALOG: Group[] = [
   {
     header: 'Before You Fly',
     rows: [
+      { title: 'Mobile Check-In', subtitle: 'Seat select & boarding pass', icon: 'checkmark-circle', slug: 'checkin' },
       { title: 'Departure Optimizer', subtitle: 'Traffic + TSA wait', icon: 'time', slug: 'departure' },
       { title: 'Book Flights & Hotels', subtitle: 'Search & book', icon: 'airplane', slug: 'booking' },
       { title: 'Offline Kit', subtitle: 'Pre-cache trip data', icon: 'cloud-offline', slug: 'offline' },
@@ -52,6 +53,7 @@ const CATALOG: Group[] = [
   {
     header: 'At the Airport',
     rows: [
+      { title: 'Flight Tracker', subtitle: 'Live status, gate & progress', icon: 'navigate', slug: 'flight' },
       { title: 'Departure Board', subtitle: 'Live split-flap', icon: 'grid', slug: 'board' },
       { title: 'Airport Map', subtitle: 'Indoor wayfinding', icon: 'map', slug: 'airport-map' },
       { title: 'Identity & Trusted Traveler', subtitle: 'Digital ID · CLEAR · PreCheck', icon: 'card', slug: 'identity' },
@@ -119,6 +121,8 @@ export default function MoreScreen() {
     intelligence: '/intelligence',
     local: '/local',
     'airport-map': '/airport-map',
+    checkin: '/checkin',
+    flight: '/flight',
   };
 
   const openFeature = (row: Row) => {
