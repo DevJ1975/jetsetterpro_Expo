@@ -25,7 +25,11 @@ export default function VaultScreen() {
     setUnlocked(ok);
   }, []);
 
+  // Auto-prompt Face ID when the vault opens. `setUnlocked` fires only after the
+  // async `authenticate()` resolves — not synchronously — so this is a legitimate
+  // mount side effect, not the cascading-render pattern the rule guards against.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void tryUnlock();
   }, [tryUnlock]);
 

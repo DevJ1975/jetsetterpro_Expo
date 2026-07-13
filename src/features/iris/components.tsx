@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Animated, Pressable, Text, View } from 'react-native';
 import { palette, radii, spacing, type } from '@/src/ui';
 import { useIris } from '@/src/core/store/iris';
@@ -76,7 +76,12 @@ export function MessageBubble({ role, text }: { role: 'user' | 'assistant'; text
 }
 
 export function ThinkingDots() {
-  const dots = [useRef(new Animated.Value(0.4)).current, useRef(new Animated.Value(0.4)).current, useRef(new Animated.Value(0.4)).current];
+  // Stable Animated.Values held in state (not refs) so they can be read in render.
+  const [dots] = useState(() => [
+    new Animated.Value(0.4),
+    new Animated.Value(0.4),
+    new Animated.Value(0.4),
+  ]);
   useEffect(() => {
     const loops = dots.map((a, i) =>
       Animated.loop(
@@ -89,8 +94,7 @@ export function ThinkingDots() {
     );
     loops.forEach((l) => l.start());
     return () => loops.forEach((l) => l.stop());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [dots]);
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: spacing.md }}>
       <IrisOrb size={18} />

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Animated, Pressable, Text, View } from 'react-native';
 import { palette, radii, spacing, type } from '@/src/ui';
 import { IrisOrb } from '@/src/features/iris/components';
@@ -37,7 +37,7 @@ export function MicButton({
  * while IRIS is speaking barges in (jumps straight back to listening).
  */
 export function VoiceBar({ voice }: { voice: IrisVoice }) {
-  const pulse = useRef(new Animated.Value(1)).current;
+  const [pulse] = useState(() => new Animated.Value(1));
   const active = voice.state === 'listening' || voice.state === 'speaking';
 
   useEffect(() => {

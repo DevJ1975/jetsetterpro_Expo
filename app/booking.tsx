@@ -6,6 +6,38 @@ import { BackHeader } from '@/src/features/common/BackHeader';
 import { toISODate } from '@/src/core/format';
 import { activeOrNextTrip, useTravel } from '@/src/core/store/travel';
 
+// Hoisted to module scope — defining a component inside render remounts it (and
+// drops its state) every render, which the react-hooks/static-components rule flags.
+function ProviderRows({
+  items,
+  onOpen,
+}: {
+  items: { name: string; url: string }[];
+  onOpen: (url: string) => void;
+}) {
+  return (
+    <>
+      {items.map((p, i) => (
+        <Pressable
+          key={p.name}
+          onPress={() => onOpen(p.url)}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingVertical: 12,
+            borderBottomWidth: i === items.length - 1 ? 0 : 0.5,
+            borderBottomColor: palette.line,
+          }}
+        >
+          <Text style={type.sub}>{p.name}</Text>
+          <Text style={[type.body, { color: palette.bright }]}>Search →</Text>
+        </Pressable>
+      ))}
+    </>
+  );
+}
+
 export default function BookingScreen() {
   const trips = useTravel((s) => s.trips);
   const trip = useMemo(() => activeOrNextTrip(trips), [trips]);
@@ -26,28 +58,6 @@ export default function BookingScreen() {
     { name: 'Kayak Hotels', url: `https://www.kayak.com/hotels/${place}/${checkin}/${checkout}` },
   ];
 
-  const ProviderRows = ({ items }: { items: { name: string; url: string }[] }) => (
-    <>
-      {items.map((p, i) => (
-        <Pressable
-          key={p.name}
-          onPress={() => go(p.url)}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingVertical: 12,
-            borderBottomWidth: i === items.length - 1 ? 0 : 0.5,
-            borderBottomColor: palette.line,
-          }}
-        >
-          <Text style={type.sub}>{p.name}</Text>
-          <Text style={[type.body, { color: palette.bright }]}>Search →</Text>
-        </Pressable>
-      ))}
-    </>
-  );
-
   return (
     <Screen contentStyle={{ paddingHorizontal: spacing.xl, paddingBottom: spacing.xxxl }}>
       <BackHeader overline="Flights & hotels" title="Book" />
@@ -63,12 +73,12 @@ export default function BookingScreen() {
 
       <Card style={{ marginTop: spacing.lg }}>
         <SectionLabel>Flights</SectionLabel>
-        <ProviderRows items={flights} />
+        <ProviderRows items={flights} onOpen={go} />
       </Card>
 
       <Card style={{ marginTop: spacing.lg }}>
         <SectionLabel>Hotels</SectionLabel>
-        <ProviderRows items={hotels} />
+        <ProviderRows items={hotels} onOpen={go} />
       </Card>
 
       <Text style={[type.caption, { textAlign: 'center', marginTop: spacing.lg }]}>

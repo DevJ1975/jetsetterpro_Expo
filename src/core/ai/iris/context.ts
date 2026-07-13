@@ -1,4 +1,4 @@
-import { activeOrNextTrip, nextUpcomingFlight } from '@/src/core/store/travel';
+import { activeOrNextTrip, nextUpcomingFlight } from '@/src/core/store/travelSelectors';
 import { formatDate } from '@/src/core/format';
 import type { Expense, ItineraryItemType, Trip } from '@/src/types/models';
 

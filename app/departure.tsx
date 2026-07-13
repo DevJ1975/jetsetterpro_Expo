@@ -7,6 +7,7 @@ import { EmptyState } from '@/src/features/common/EmptyState';
 import { Chips } from '@/src/features/common/Chips';
 import { formatTime } from '@/src/core/format';
 import { nextUpcomingFlight, useTravel } from '@/src/core/store/travel';
+import { useNow } from '@/src/core/useNow';
 
 type Lane = 'standard' | 'preCheck' | 'clear';
 const LANE_WAIT: Record<Lane, number> = { standard: 30, preCheck: 12, clear: 6 };
@@ -19,6 +20,7 @@ export default function DepartureOptimizerScreen() {
   const [drive, setDrive] = useState('30');
   const [lane, setLane] = useState<Lane>('preCheck');
   const [intl, setIntl] = useState<'domestic' | 'international'>('domestic');
+  const now = useNow(60_000); // live "leave by" countdown, refreshed each minute
 
   const result = useMemo(() => {
     if (!flight) return null;
@@ -27,9 +29,9 @@ export default function DepartureOptimizerScreen() {
     const gateBuffer = 45 + (intl === 'international' ? 30 : 0);
     const lead = driveMin + LANE_WAIT[lane] + gateBuffer;
     const leaveBy = new Date(dep.getTime() - lead * 60_000);
-    const minsUntil = Math.round((leaveBy.getTime() - Date.now()) / 60_000);
+    const minsUntil = Math.round((leaveBy.getTime() - now) / 60_000);
     return { dep, leaveBy, lead, minsUntil };
-  }, [flight, drive, lane, intl]);
+  }, [flight, drive, lane, intl, now]);
 
   if (!flight || !result) {
     return (

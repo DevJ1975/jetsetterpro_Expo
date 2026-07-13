@@ -6,6 +6,7 @@ import { Screen } from '@/src/features/common/Screen';
 import { BackHeader } from '@/src/features/common/BackHeader';
 import { EmptyState } from '@/src/features/common/EmptyState';
 import { formatDate } from '@/src/core/format';
+import { useNow } from '@/src/core/useNow';
 import {
   CATEGORY_DISPLAY,
   CATEGORY_ICON,
@@ -26,7 +27,7 @@ export default function IrisMemoryScreen() {
   const forgetEverything = useIrisMemory((s) => s.forgetEverything);
 
   const categories = Object.keys(CATEGORY_DISPLAY) as MemoryCategory[];
-  const now = Date.now();
+  const now = useNow(60_000);
 
   const wipe = () => {
     Alert.alert("Wipe IRIS's memory?", 'This forgets every saved preference. This cannot be undone.', [

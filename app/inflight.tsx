@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Text, View } from 'react-native';
 import { Card, ProgressBar, SectionLabel, StatusDot, ScreenHeader, palette, spacing, type } from '@/src/ui';
 import { Screen } from '@/src/features/common/Screen';
 import { EmptyState } from '@/src/features/common/EmptyState';
 import { formatTime, relativeDayLabel } from '@/src/core/format';
 import { nextUpcomingFlight, useTravel } from '@/src/core/store/travel';
+import { useNow } from '@/src/core/useNow';
 import type { ItineraryItem, Trip } from '@/src/types/models';
 
 function parseRoute(title: string): { origin: string; dest: string } {
@@ -21,21 +22,24 @@ function phaseOf(p: number): { label: string; alt: number } {
   return { label: 'Final approach', alt: Math.round(5000 * (1 - (p - 0.95) / 0.05)) };
 }
 
+// Pure: the flight whose window contains `now`, if any. Cheap enough to run each
+// render, so no manual useMemo (which the React Compiler couldn't preserve here).
+function activeFlight(trips: Trip[], now: number) {
+  for (const t of trips) {
+    for (const i of t.items) {
+      if (i.type !== 'flight' || !i.endDate) continue;
+      const start = new Date(i.startDate).getTime();
+      const end = new Date(i.endDate).getTime();
+      if (start <= now && now <= end) return { trip: t, item: i, start, end };
+    }
+  }
+  return null;
+}
+
 export default function InFlightScreen() {
   const trips = useTravel((s) => s.trips);
-
-  const active = useMemo(() => {
-    const now = Date.now();
-    for (const t of trips) {
-      for (const i of t.items) {
-        if (i.type !== 'flight' || !i.endDate) continue;
-        const start = new Date(i.startDate).getTime();
-        const end = new Date(i.endDate).getTime();
-        if (start <= now && now <= end) return { trip: t, item: i, start, end };
-      }
-    }
-    return null;
-  }, [trips]);
+  const now = useNow(30_000); // re-check "am I flying?" every 30s
+  const active = activeFlight(trips, now);
 
   if (!active) {
     const next = nextUpcomingFlight(trips);
@@ -61,7 +65,7 @@ export default function InFlightScreen() {
 }
 
 function InFlightView({ item, start, end }: { trip: Trip; item: ItineraryItem; start: number; end: number }) {
-  const now = Date.now();
+  const now = useNow(30_000); // advance the live flight progress every 30s
   const progress = Math.max(0, Math.min(1, (now - start) / (end - start)));
   const { origin, dest } = parseRoute(item.title);
   const phase = phaseOf(progress);

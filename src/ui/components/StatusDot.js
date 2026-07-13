@@ -1,10 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 import { palette } from '../theme';
 
 /** Pulsing live-status dot. tone: 'good' | 'warn' | 'bad' | 'accent' */
 export default function StatusDot({ tone = 'good', size = 8, pulse = true }) {
-  const a = useRef(new Animated.Value(0)).current;
+  // A stable Animated.Value held in state (not a ref) so it can be read in render.
+  const [a] = useState(() => new Animated.Value(0));
   useEffect(() => {
     if (!pulse) return;
     const loop = Animated.loop(Animated.sequence([
@@ -13,7 +14,7 @@ export default function StatusDot({ tone = 'good', size = 8, pulse = true }) {
     ]));
     loop.start();
     return () => loop.stop();
-  }, [pulse]);
+  }, [pulse, a]);
   const color = { good: palette.good, warn: palette.warn, bad: palette.bad, accent: palette.accent }[tone] || palette.good;
   return (
     <View style={{ width: size * 2.5, height: size * 2.5, alignItems: 'center', justifyContent: 'center' }}>

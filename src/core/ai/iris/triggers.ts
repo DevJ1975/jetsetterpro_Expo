@@ -1,4 +1,4 @@
-import { activeOrNextTrip, nextUpcomingFlight } from '@/src/core/store/travel';
+import { activeOrNextTrip, nextUpcomingFlight } from '@/src/core/store/travelSelectors';
 import type { Trip } from '@/src/types/models';
 
 // A faithful subset of IRISTriggers — proactive suggestions surfaced on Home,
