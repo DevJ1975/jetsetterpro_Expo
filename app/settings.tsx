@@ -26,7 +26,7 @@ export default function SettingsScreen() {
   const confirmClear = () => {
     Alert.alert('Clear local data?', 'Removes trips, expenses, passes, and IRIS memory from this device.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Clear', style: 'destructive', onPress: () => clearAllLocalData() },
+      { text: 'Clear', style: 'destructive', onPress: () => void clearAllLocalData() },
     ]);
   };
 
@@ -39,7 +39,7 @@ export default function SettingsScreen() {
         onPress: async () => {
           await deleteAccount(async () => {
             await wipeAllRemote();
-            clearAllLocalData();
+            await clearAllLocalData();
           });
           reset();
           router.replace('/onboarding');

@@ -82,13 +82,11 @@ export async function fetchPlaces(city: string, category: PlaceCategory): Promis
   });
   if (!r.ok) throw new Error(`Overpass ${r.status}`);
   const j = (await r.json()) as { elements?: OverpassElement[] };
-  const seen = new Set<string>();
-  const places: Place[] = [];
+  const candidates: Place[] = [];
   for (const el of j.elements ?? []) {
     const name = el.tags?.name;
-    if (!name || el.lat == null || el.lon == null || seen.has(name)) continue;
-    seen.add(name);
-    places.push({
+    if (!name || el.lat == null || el.lon == null) continue;
+    candidates.push({
       id: String(el.id),
       name,
       kind: labelFor(el.tags ?? {}),
@@ -97,7 +95,18 @@ export async function fetchPlaces(city: string, category: PlaceCategory): Promis
       distanceM: Math.round(haversineM(g.lat, g.lon, el.lat, el.lon)),
     });
   }
-  return places.sort((a, b) => a.distanceM - b.distanceM).slice(0, MAX_RESULTS);
+  // Sort by distance BEFORE de-duplicating by name, so for same-named chains
+  // (e.g. two "Starbucks") the NEAREST branch is the one kept (Overpass returns
+  // elements in id order, not by proximity).
+  candidates.sort((a, b) => a.distanceM - b.distanceM);
+  const seen = new Set<string>();
+  const places: Place[] = [];
+  for (const p of candidates) {
+    if (seen.has(p.name)) continue;
+    seen.add(p.name);
+    places.push(p);
+  }
+  return places.slice(0, MAX_RESULTS);
 }
 
 export function usePlaces(city: string | undefined, category: PlaceCategory | null) {
