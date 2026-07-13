@@ -14,19 +14,28 @@ export async function isBiometricAvailable(): Promise<boolean> {
 
 export async function authenticate(reason: string): Promise<boolean> {
   try {
-    const hasHardware = await LocalAuthentication.hasHardwareAsync();
-    const enrolled = await LocalAuthentication.isEnrolledAsync();
-    // No biometrics AND no way to enroll → can't gate; allow (with a UI note).
-    if (!hasHardware && !enrolled) return true;
+    // getEnrolledLevelAsync reports NONE only when there is NEITHER a biometric
+    // NOR a device passcode — the one case where we can't gate at all and must
+    // degrade open (so a bare simulator isn't permanently locked). SECRET
+    // (passcode) or BIOMETRIC means there IS an auth method, so require it — a
+    // passcode-only device must still gate the vault. (hasHardware/isEnrolled
+    // don't see a passcode, so they can't be used for this.)
+    const level = await LocalAuthentication.getEnrolledLevelAsync();
+    if (level === LocalAuthentication.SecurityLevel.NONE) return true;
 
     const res = await LocalAuthentication.authenticateAsync({
       promptMessage: reason,
-      disableDeviceFallback: false, // allow passcode
+      disableDeviceFallback: false, // allow the device passcode as fallback
       cancelLabel: 'Cancel',
     });
     if (res.success) return true;
-    // If the platform reports no enrolled method, degrade open rather than lock out.
-    return res.error === 'not_enrolled' || res.error === 'not_available';
+    // A genuine failure/cancel stays locked; only degrade open if the platform
+    // still reports no usable method.
+    return (
+      res.error === 'not_enrolled' ||
+      res.error === 'not_available' ||
+      res.error === 'passcode_not_set'
+    );
   } catch {
     return false;
   }

@@ -42,6 +42,9 @@ interface VaultState {
   docs: VaultDoc[];
   addMeta: (d: VaultDoc) => void;
   remove: (id: string) => void;
+  /** Purge every doc's secure-store number, then clear metadata. Awaited by
+   *  account deletion so the Keychain entries don't outlive the account. */
+  clearAll: () => Promise<void>;
 }
 
 export const useVault = create<VaultState>()(
@@ -52,6 +55,10 @@ export const useVault = create<VaultState>()(
       remove: (id) => {
         void removeDocNumber(id);
         set({ docs: get().docs.filter((x) => x.id !== id) });
+      },
+      clearAll: async () => {
+        await Promise.all(get().docs.map((d) => removeDocNumber(d.id)));
+        set({ docs: [] });
       },
     }),
     { name: 'jetsetter_vault_documents', storage: zustandStorage },

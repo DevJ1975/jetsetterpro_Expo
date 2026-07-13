@@ -27,7 +27,10 @@ export function demoResponse(prompt: string): string {
   if (has(t, ['hotel', 'stay', 'room', 'newbury', 'booking'])) {
     return "You're at **The Newbury Boston** — a late check-in is on file. I'd confirm the room type on arrival. Want me to add the hotel details to your Calendar?";
   }
-  if (has(t, ['flight', 'dl2244', 'delay', 'gate', 'status'])) {
+  // NB: 'status' is intentionally NOT here — it lives in the loyalty branch so
+  // "medallion/loyalty status" route there; "flight/gate/delay status" still land
+  // here via those words.
+  if (has(t, ['flight', 'dl2244', 'delay', 'gate'])) {
     return "**DL2244 · JFK → BOS** is on time — **Gate B27, Seat 1A**, boards around 8:40 AM. I'll flag any gate changes. Want me to open Flight Tracker?";
   }
   if (has(t, ['disruption', 'cancelled', 'rebook', 'alternative', 'missed connection'])) {
