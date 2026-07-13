@@ -15,7 +15,8 @@ import { Screen } from '@/src/features/common/Screen';
 import { EmptyState } from '@/src/features/common/EmptyState';
 import { IrisSuggestionCard } from '@/src/features/iris/SuggestionCard';
 import { useWeather, cToF } from '@/src/core/api/weather';
-import { formatMoney, formatTime, relativeDayLabel, toISODate } from '@/src/core/format';
+import { formatTime, relativeDayLabel, toISODate } from '@/src/core/format';
+import { formatByCurrency } from '@/src/core/expenses';
 import { usePreferences } from '@/src/core/store/preferences';
 import { activeOrNextTrip, nextUpcomingFlight, useTravel } from '@/src/core/store/travel';
 
@@ -38,12 +39,19 @@ export default function HomeScreen() {
   const flight = useMemo(() => nextUpcomingFlight(trips), [trips]);
   const weather = useWeather(trip?.destination);
 
-  const todaySpend = useMemo(() => {
-    const today = toISODate();
-    return expenses.filter((e) => e.date === today).reduce((sum, e) => sum + e.amount, 0);
-  }, [expenses]);
+  const today = toISODate();
+  const todaySpendLabel = useMemo(
+    () => formatByCurrency(expenses.filter((e) => e.date === today), homeCurrency),
+    [expenses, today, homeCurrency],
+  );
 
-  const overline = trip ? `${trip.destination} · ${relativeDayLabel(trip.startDate)}` : 'No active trip';
+  // An in-progress multi-day trip should read "Now", not a past start-date label.
+  const tripTiming = trip
+    ? trip.startDate <= today && trip.endDate >= today
+      ? 'Now'
+      : relativeDayLabel(trip.startDate)
+    : null;
+  const overline = trip ? `${trip.destination} · ${tripTiming}` : 'No active trip';
 
   return (
     <Screen contentStyle={{ paddingHorizontal: spacing.xl }}>
@@ -112,7 +120,7 @@ export default function HomeScreen() {
         <SectionLabel>Today</SectionLabel>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <View style={{ flex: 1 }}>
-            <Text style={type.stat}>{formatMoney(todaySpend, homeCurrency)}</Text>
+            <Text style={type.stat}>{todaySpendLabel}</Text>
             <Text style={[type.caption, { marginTop: 2 }]}>Spent today</Text>
           </View>
           <Button title="Add expense" variant="secondary" size="sm" onPress={() => router.push('/add-expense')} />

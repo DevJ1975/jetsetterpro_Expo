@@ -39,6 +39,14 @@ export default function CurrencyScreen() {
     setResult(null);
   };
 
+  // Editing any input invalidates the previous result — clear it so the panel
+  // never shows a stale amount relabeled with a newly-typed currency code.
+  const edit = (setter: (v: string) => void) => (v: string) => {
+    setter(v);
+    setResult(null);
+    setStatus('idle');
+  };
+
   const spendByCurrency = useMemo(() => {
     const m = new Map<string, number>();
     for (const e of expenses) m.set(e.currency, (m.get(e.currency) ?? 0) + e.amount);
@@ -51,13 +59,13 @@ export default function CurrencyScreen() {
 
       <Card variant="glass" style={{ gap: spacing.lg }}>
         <SectionLabel>Converter</SectionLabel>
-        <Input label="Amount" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
+        <Input label="Amount" value={amount} onChangeText={edit(setAmount)} keyboardType="decimal-pad" />
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing.md }}>
-          <Input label="From" value={from} onChangeText={setFrom} autoCapitalize="characters" maxLength={3} style={{ flex: 1 }} />
+          <Input label="From" value={from} onChangeText={edit(setFrom)} autoCapitalize="characters" maxLength={3} style={{ flex: 1 }} />
           <Pressable onPress={swap} hitSlop={10} style={{ paddingBottom: 12 }}>
             <Ionicons name="swap-horizontal" size={24} color={palette.bright} />
           </Pressable>
-          <Input label="To" value={to} onChangeText={setTo} autoCapitalize="characters" maxLength={3} style={{ flex: 1 }} />
+          <Input label="To" value={to} onChangeText={edit(setTo)} autoCapitalize="characters" maxLength={3} style={{ flex: 1 }} />
         </View>
 
         <Pressable

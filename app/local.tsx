@@ -44,13 +44,20 @@ export default function LocalExperiencesScreen() {
     setCat(key);
   };
 
+  // Clearing the destination invalidates the selected category — otherwise the
+  // disabled query renders a "undefined nearby" results card with no rows.
+  const onDestChange = (v: string) => {
+    setDest(v);
+    if (!v.trim()) setCat(null);
+  };
+
   return (
     <Screen contentStyle={{ paddingHorizontal: spacing.xl, paddingBottom: spacing.xxxl }}>
       <BackHeader overline="Restaurants · attractions · nightlife" title="Local Experiences" />
 
       <Card variant="glass" style={{ marginBottom: spacing.lg }}>
         <SectionLabel>Where</SectionLabel>
-        <Input label="Destination" placeholder="Tokyo, Japan" value={dest} onChangeText={setDest} />
+        <Input label="Destination" placeholder="Tokyo, Japan" value={dest} onChangeText={onDestChange} />
       </Card>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.lg }}>
