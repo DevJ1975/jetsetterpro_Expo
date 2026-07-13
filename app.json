@@ -61,7 +61,7 @@
         }
       ],
       [
-        "@react-native-voice/voice",
+        "expo-speech-recognition",
         {
           "microphonePermission": "JetSetter Pro uses the microphone so you can talk to IRIS hands-free.",
           "speechRecognitionPermission": "JetSetter Pro transcribes your speech so IRIS can understand what you ask."
