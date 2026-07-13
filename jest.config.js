@@ -7,7 +7,7 @@ module.exports = {
     '^react-native-vector-icons/(.*)': '@expo/vector-icons/$1',
     '^@/(.*)$': '<rootDir>/$1',
   },
-  testMatch: ['**/__tests__/**/*.test.ts', '**/*.test.ts'],
+  testMatch: ['**/__tests__/**/*.test.ts?(x)', '**/*.test.ts?(x)'],
   // functions/ is a separate Cloud Functions package with its own toolchain.
   testPathIgnorePatterns: ['/node_modules/', '/functions/', '/dist/'],
   clearMocks: true,

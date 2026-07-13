@@ -4,7 +4,9 @@ import { palette, radii, shadows, spacing } from '../theme';
 
 /** variant: 'solid' (default) | 'glass' | 'outline' */
 export default function Card({ children, variant = 'solid', style }) {
-  return <View style={[styles.base, styles[variant], style]}>{children}</View>;
+  // Fall back to 'solid' for an unknown variant (mirrors Button's fallback) so a
+  // stray variant can't render a background-less card.
+  return <View style={[styles.base, styles[variant] || styles.solid, style]}>{children}</View>;
 }
 
 const styles = StyleSheet.create({
