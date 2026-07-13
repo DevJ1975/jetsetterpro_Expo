@@ -1,9 +1,7 @@
-# Generated vector index — derived artifact, rebuild with `npm run build`.
-# It requires VOYAGE_API_KEY and goes stale as app/ + src/ change, so we don't
-# commit it by default. Delete these lines if you'd rather check it in so
-# teammates get search without a Voyage key.
-index.json
+# The vector index IS committed (see README) so teammates get semantic search
+# without a Voyage key. Temp/test indexes stay ignored; index.json is tracked.
 index.*.json
+!index.json
 
 # In case anything ever gets installed here (currently zero deps).
 node_modules/

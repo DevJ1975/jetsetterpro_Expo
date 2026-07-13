@@ -34,12 +34,14 @@ Model defaults to `voyage-4`. For code-heavy retrieval you can switch:
 VOYAGE_MODEL=voyage-code-3 npm run build
 ```
 
-`index.json` is **git-ignored** (derived, needs the key to rebuild, goes stale as
-code changes). Rebuilds are **incremental** — each chunk is embedded once and
-cached by content hash in the index, so `npm run build` after a small change
-re-embeds only the handful of chunks that actually changed. Force a clean
-re-embed with `npm run build -- --full`. To share the index without distributing
-a key, delete the `index.json` lines from `.gitignore` and commit it.
+`index.json` **is committed** so teammates get semantic search without a Voyage
+key (it's a ~1.4 MB derived artifact). Rebuilds are **incremental** — each chunk
+is embedded once and cached by content hash, so `npm run build` after a small
+change re-embeds only the handful of chunks that actually changed. Force a clean
+re-embed with `npm run build -- --full`. Because it's committed, the index can
+drift from the code between rebuilds: the post-commit hook refreshes it locally,
+and you commit the refreshed `index.json` when you want to update the shared copy.
+(Temp indexes `index.*.json`, `rebuild.log`, and the lock dir stay git-ignored.)
 
 ## Auto-rebuild on commit (git hook)
 
@@ -110,7 +112,7 @@ Don't ship a fake index as if it were real — rebuild with a key for production
 | `lib/corpus.js` | Corpus definition, file walker, markdown/code chunkers. |
 | `lib/voyage.js` | Voyage REST client (batching + retry) and the fake-embedding mode. |
 | `lib/cosine.js` | Cosine similarity + top-k ranking. |
-| `index.json` | Generated vector index (git-ignored). |
+| `index.json` | Generated vector index (committed; temp `index.*.json` stay ignored). |
 
 ## Env vars
 
