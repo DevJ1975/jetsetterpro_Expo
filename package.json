@@ -20,7 +20,6 @@
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
     "@react-native-async-storage/async-storage": "^2.2.0",
-    "@react-native-voice/voice": "^3.2.4",
     "@tanstack/react-query": "^5.101.2",
     "expo": "^56.0.15",
     "expo-calendar": "~56.0.9",
@@ -38,6 +37,7 @@
     "expo-secure-store": "~56.0.4",
     "expo-sharing": "~56.0.21",
     "expo-speech": "~56.0.3",
+    "expo-speech-recognition": "^56.0.1",
     "expo-splash-screen": "~56.0.12",
     "expo-status-bar": "~56.0.4",
     "expo-symbols": "~56.0.6",
@@ -72,7 +72,9 @@
   "expo": {
     "doctor": {
       "reactNativeDirectoryCheck": {
-        "exclude": ["flight-live-activity"]
+        "exclude": [
+          "flight-live-activity"
+        ]
       }
     }
   },
