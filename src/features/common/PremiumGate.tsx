@@ -4,8 +4,8 @@ import { Badge, Card, SectionLabel, spacing, type } from '@/src/ui';
 import { useIsPro } from '@/src/core/store/subscription';
 import { IconWell } from './IconWell';
 
-/** Wraps a premium feature. In demo mode Pro is unlocked (mirrors iOS DEBUG
- *  unlock); real IAP gating arrives with the subscription/paywall phase. */
+/** Wraps a premium feature. Pro is unlocked for the beta (see subscription
+ *  store); real IAP gating arrives with the subscription/paywall phase. */
 export function PremiumGate({ feature, children }: { feature: string; children: React.ReactNode }) {
   const isPro = useIsPro();
   if (isPro) return <>{children}</>;

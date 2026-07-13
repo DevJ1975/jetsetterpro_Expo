@@ -1,9 +1,9 @@
 import { create } from 'zustand';
-import { usePreferences } from './preferences';
 
 // Entitlement state. Real IAP arrives in the subscription/paywall phase
-// (RevenueCat, reusing the iOS product IDs); for now Pro is unlocked in demo
-// mode, mirroring the iOS DEBUG demo-unlock.
+// (RevenueCat, reusing the iOS product IDs). For the beta, Pro is unlocked for
+// every tester so all features are exercisable; flip the default to `false` and
+// wire the store to the purchase result before GA.
 
 interface SubscriptionState {
   isProReal: boolean;
@@ -11,13 +11,11 @@ interface SubscriptionState {
 }
 
 export const useSubscription = create<SubscriptionState>((set) => ({
-  isProReal: false,
+  isProReal: true, // Beta: Pro unlocked for all testers.
   setProReal: (on) => set({ isProReal: on }),
 }));
 
-/** Combined entitlement: demo mode OR a real Pro subscription. */
+/** Whether the user is entitled to Pro features. */
 export function useIsPro(): boolean {
-  const demo = usePreferences((s) => s.demoMode);
-  const real = useSubscription((s) => s.isProReal);
-  return demo || real;
+  return useSubscription((s) => s.isProReal);
 }

@@ -3,7 +3,6 @@ import { runIrisConversation } from '@/src/core/ai/agentLoop';
 import { ChatMessage } from '@/src/core/ai/anthropic';
 import { buildSystemPrompt } from '@/src/core/ai/iris/agent';
 import { composeFirstTurn, currentSnapshot } from '@/src/core/ai/iris/context';
-import { demoResponse } from '@/src/core/ai/iris/demo';
 import { executeIrisTool, IRIS_TOOLS } from '@/src/core/ai/iris/tools';
 import { makeId } from '@/src/core/format';
 import { isAiConfigured } from '@/src/core/firebase/config';
@@ -33,16 +32,11 @@ interface IrisChatState {
   clear: () => void;
 }
 
-// Demo "typing" simulation (chunked to avoid a setState per character).
-async function typeOut(reply: string, onPartial: (s: string) => void): Promise<void> {
-  const steps = Math.min(reply.length, 60);
-  const chunk = Math.max(1, Math.ceil(reply.length / Math.max(steps, 1)));
-  for (let i = chunk; i < reply.length; i += chunk) {
-    onPartial(reply.slice(0, i));
-    await new Promise((r) => setTimeout(r, 24));
-  }
-  onPartial(reply);
-}
+// Shown when the AI backend isn't reachable — honest, never a canned answer.
+const IRIS_NOT_CONNECTED =
+  "IRIS isn't connected yet. Once the AI backend is set up, I can plan trips, track flights, log expenses, and manage your itinerary.";
+const IRIS_REQUEST_FAILED =
+  'Something went wrong reaching IRIS. Please check your connection and try again in a moment.';
 
 export const useIris = create<IrisChatState>((set, get) => ({
   messages: [],
@@ -69,13 +63,11 @@ export const useIris = create<IrisChatState>((set, get) => ({
     const snapshot = isFirst ? currentSnapshot(travel.trips, travel.expenses) : '';
     const apiUser: ChatMessage = { role: 'user', content: composeFirstTurn(text, snapshot) };
 
-    // Demo / offline fallback — no AI backend configured.
+    // No AI backend configured — be honest rather than fake a reply. Don't
+    // record this in apiMessages so a later live turn starts a clean history.
     if (!isAiConfigured()) {
-      const reply = demoResponse(text);
-      await typeOut(reply, (partial) => set({ streamingContent: partial }));
       set((st) => ({
-        messages: [...st.messages, { id: makeId(), role: 'assistant', text: reply }],
-        apiMessages: [...st.apiMessages, apiUser, { role: 'assistant', content: reply }],
+        messages: [...st.messages, { id: makeId(), role: 'assistant', text: IRIS_NOT_CONNECTED }],
         isResponding: false,
         streamingContent: '',
       }));
@@ -109,13 +101,13 @@ export const useIris = create<IrisChatState>((set, get) => ({
         streamingContent: '',
       }));
     } catch {
-      // Fall back to a canned reply rather than dead-ending the user (mirrors iOS).
-      const reply = demoResponse(text);
+      // Surface the failure honestly and leave apiMessages untouched so the
+      // user can simply resend without corrupting the conversation history.
       set((st) => ({
-        messages: [...st.messages, { id: makeId(), role: 'assistant', text: reply }],
-        apiMessages: [...st.apiMessages, apiUser, { role: 'assistant', content: reply }],
+        messages: [...st.messages, { id: makeId(), role: 'assistant', text: IRIS_REQUEST_FAILED }],
         isResponding: false,
         streamingContent: '',
+        error: 'IRIS request failed',
       }));
     }
   },

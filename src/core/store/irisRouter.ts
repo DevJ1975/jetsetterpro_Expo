@@ -50,17 +50,6 @@ export const DESTINATION_NAME: Record<Destination, string> = {
   currency: 'Currency & Expenses',
 };
 
-// Feature screens not yet ported route to the shared "coming soon" screen.
-const FEATURE: Partial<Record<Destination, { slug: string; title: string }>> = {
-  checkIn: { slug: 'checkin', title: 'Check-In' },
-  disruption: { slug: 'disruption', title: 'Trip Disruption AI' },
-  flightTracker: { slug: 'flight', title: 'Flight Tracker' },
-  documentVault: { slug: 'vault', title: 'Document Vault' },
-  packingList: { slug: 'packing', title: 'Smart Packing List' },
-  groundTransport: { slug: 'ground', title: 'Ground Transport' },
-  currency: { slug: 'currency', title: 'Currency & Expenses' },
-};
-
 interface IrisRouterState {
   pendingAction: PendingAction | null;
   propose: (a: PendingAction) => void;
@@ -85,21 +74,17 @@ export const useIrisRouter = create<IrisRouterState>((set) => ({
       router.navigate(tabHref as never);
       return;
     }
-    // Ported feature screens (real routes).
+    // Every feature destination maps to a real, shipped screen.
     const real: Partial<Record<Destination, string>> = {
       packingList: '/packing',
       currency: '/currency',
       documentVault: '/vault',
       disruption: '/disruption',
+      flightTracker: '/inflight',
+      groundTransport: '/ground',
+      checkIn: '/itinerary',
     };
     const realHref = real[dest];
-    if (realHref) {
-      router.navigate(realHref as never);
-      return;
-    }
-    const feature = FEATURE[dest];
-    if (feature) {
-      router.push({ pathname: '/feature/[slug]', params: { slug: feature.slug, title: feature.title } });
-    }
+    if (realHref) router.navigate(realHref as never);
   },
 }));

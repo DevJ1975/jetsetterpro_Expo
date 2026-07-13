@@ -1,8 +1,8 @@
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Alert, Switch, Text, View } from 'react-native';
-import { Button, Card, Input, SectionLabel, palette, spacing, type } from '@/src/ui';
+import { Alert, Text, View } from 'react-native';
+import { Button, Card, Input, SectionLabel, spacing, type } from '@/src/ui';
 import { Screen } from '@/src/features/common/Screen';
 import { BackHeader } from '@/src/features/common/BackHeader';
 import { deleteAccount, signOutUser } from '@/src/core/firebase/auth';
@@ -13,7 +13,7 @@ import { useSession } from '@/src/core/store/session';
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { name, homeAirport, homeCurrency, demoMode, setProfile, setDemoMode, reset } = usePreferences();
+  const { name, homeAirport, homeCurrency, setProfile, reset } = usePreferences();
   const session = useSession();
 
   const accountLine =
@@ -87,22 +87,6 @@ export default function SettingsScreen() {
             style={{ marginTop: spacing.md }}
           />
         ) : null}
-      </Card>
-
-      <Card style={{ marginTop: spacing.lg }}>
-        <SectionLabel>Data</SectionLabel>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={{ flex: 1 }}>
-            <Text style={type.sub}>Demo data</Text>
-            <Text style={[type.bodyDim, { marginTop: 2 }]}>Explore with seeded trips & expenses</Text>
-          </View>
-          <Switch
-            value={demoMode}
-            onValueChange={setDemoMode}
-            trackColor={{ true: palette.accent, false: palette.line }}
-            thumbColor="#FFFFFF"
-          />
-        </View>
       </Card>
 
       <View style={{ gap: spacing.md, marginTop: spacing.xl }}>

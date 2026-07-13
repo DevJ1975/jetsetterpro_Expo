@@ -71,6 +71,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "42dd649a-31eb-4807-b2bd-113cdbe5b634"
+      }
+    },
+    "owner": "jamil.dev"
   }
 }
