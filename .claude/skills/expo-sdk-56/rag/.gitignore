@@ -1,0 +1,11 @@
+# The vector index IS committed (see README) so teammates get semantic search
+# without a Voyage key. Temp/test indexes stay ignored; index.json is tracked.
+index.*.json
+!index.json
+
+# In case anything ever gets installed here (currently zero deps).
+node_modules/
+
+# Auto-rebuild hook artifacts.
+rebuild.log
+.rebuild.lock/

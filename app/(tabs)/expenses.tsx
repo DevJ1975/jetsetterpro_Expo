@@ -16,6 +16,7 @@ import { Screen } from '@/src/features/common/Screen';
 import { EmptyState } from '@/src/features/common/EmptyState';
 import { IconWell } from '@/src/features/common/IconWell';
 import { formatDate, formatMoney } from '@/src/core/format';
+import { formatByCurrency, sumByCurrency } from '@/src/core/expenses';
 import { CATEGORY_META, ExpenseCategory } from '@/src/types/models';
 import { usePreferences } from '@/src/core/store/preferences';
 import { useTravel } from '@/src/core/store/travel';
@@ -25,16 +26,26 @@ export default function ExpensesScreen() {
   const expenses = useTravel((s) => s.expenses);
   const homeCurrency = usePreferences((s) => s.homeCurrency);
 
-  const { total, byCategory } = useMemo(() => {
+  const { totalLabel, byCategory, categoryCurrency, categoryTotal } = useMemo(() => {
+    // The header shows every currency; the category breakdown is scoped to the
+    // dominant currency so its amounts and bar ratios are meaningful (summing
+    // categories across currencies would be nonsense).
+    const primary = sumByCurrency(expenses)[0]?.currency ?? homeCurrency;
     const totals = new Map<ExpenseCategory, number>();
-    let sum = 0;
+    let primaryTotal = 0;
     for (const e of expenses) {
+      if (e.currency !== primary) continue;
       totals.set(e.category, (totals.get(e.category) ?? 0) + e.amount);
-      sum += e.amount;
+      primaryTotal += e.amount;
     }
     const ranked = [...totals.entries()].sort((a, b) => b[1] - a[1]);
-    return { total: sum, byCategory: ranked };
-  }, [expenses]);
+    return {
+      totalLabel: formatByCurrency(expenses, homeCurrency),
+      byCategory: ranked,
+      categoryCurrency: primary,
+      categoryTotal: primaryTotal,
+    };
+  }, [expenses, homeCurrency]);
 
   return (
     <Screen contentStyle={{ paddingHorizontal: spacing.xl }}>
@@ -63,7 +74,7 @@ export default function ExpensesScreen() {
         <>
           <Card variant="glass">
             <SectionLabel>Total spend</SectionLabel>
-            <Text style={type.display}>{formatMoney(total, homeCurrency)}</Text>
+            <Text style={type.display}>{totalLabel}</Text>
           </Card>
 
           <Card style={{ marginTop: spacing.lg, gap: spacing.md }}>
@@ -72,9 +83,9 @@ export default function ExpensesScreen() {
               <View key={cat} style={{ gap: 6 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Text style={[type.body, { flex: 1 }]}>{CATEGORY_META[cat].label}</Text>
-                  <Text style={type.body}>{formatMoney(amount, homeCurrency)}</Text>
+                  <Text style={type.body}>{formatMoney(amount, categoryCurrency)}</Text>
                 </View>
-                <ProgressBar value={total > 0 ? amount / total : 0} />
+                <ProgressBar value={categoryTotal > 0 ? amount / categoryTotal : 0} />
               </View>
             ))}
           </Card>

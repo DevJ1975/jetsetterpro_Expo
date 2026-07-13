@@ -7,20 +7,8 @@ import { EmptyState } from '@/src/features/common/EmptyState';
 import { formatTime, relativeDayLabel } from '@/src/core/format';
 import { nextUpcomingFlight, useTravel } from '@/src/core/store/travel';
 import { useNow } from '@/src/core/useNow';
+import { parseRoute, phaseOf } from '@/src/core/flightPhase';
 import type { ItineraryItem, Trip } from '@/src/types/models';
-
-function parseRoute(title: string): { origin: string; dest: string } {
-  const m = title.match(/([A-Z]{3})\s*(?:→|->|to)\s*([A-Z]{3})/i);
-  return m ? { origin: m[1].toUpperCase(), dest: m[2].toUpperCase() } : { origin: '', dest: '' };
-}
-
-function phaseOf(p: number): { label: string; alt: number } {
-  if (p < 0.06) return { label: 'Taxi & Takeoff', alt: Math.round((p / 0.06) * 10000) };
-  if (p < 0.22) return { label: 'Climb', alt: Math.round(10000 + ((p - 0.06) / 0.16) * 25000) };
-  if (p < 0.8) return { label: 'Cruise', alt: 35000 };
-  if (p < 0.95) return { label: 'Descent', alt: Math.round(35000 * (1 - (p - 0.8) / 0.15)) };
-  return { label: 'Final approach', alt: Math.round(5000 * (1 - (p - 0.95) / 0.05)) };
-}
 
 // Pure: the flight whose window contains `now`, if any. Cheap enough to run each
 // render, so no manual useMemo (which the React Compiler couldn't preserve here).

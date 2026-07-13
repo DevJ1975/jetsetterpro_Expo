@@ -7,7 +7,7 @@ import { Screen } from '@/src/features/common/Screen';
 import { BackHeader } from '@/src/features/common/BackHeader';
 import { EmptyState } from '@/src/features/common/EmptyState';
 import { PremiumGate } from '@/src/features/common/PremiumGate';
-import { formatMoney } from '@/src/core/format';
+import { formatByCurrency } from '@/src/core/expenses';
 import { CATEGORY_META, Expense } from '@/src/types/models';
 import { usePreferences } from '@/src/core/store/preferences';
 import { useTravel } from '@/src/core/store/travel';
@@ -46,7 +46,8 @@ export default function ExpenseExportScreen() {
   const name = usePreferences((s) => s.name);
   const [busy, setBusy] = useState(false);
 
-  const total = useMemo(() => expenses.reduce((s, e) => s + e.amount, 0), [expenses]);
+  // Per-currency, to match the PDF (buildHtml) — never a cross-currency sum.
+  const totalLabel = useMemo(() => formatByCurrency(expenses, homeCurrency), [expenses, homeCurrency]);
 
   const exportPdf = async () => {
     if (expenses.length === 0 || busy) return;
@@ -78,7 +79,7 @@ export default function ExpenseExportScreen() {
             <>
               <Card variant="glass">
                 <SectionLabel>Report</SectionLabel>
-                <Text style={type.display}>{formatMoney(total, homeCurrency)}</Text>
+                <Text style={type.display}>{totalLabel}</Text>
                 <Text style={[type.bodyDim, { marginTop: 4 }]}>{expenses.length} expenses ready to export</Text>
               </Card>
               <Button

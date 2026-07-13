@@ -1,0 +1,16 @@
+{
+  "name": "expo-sdk-56-rag",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "description": "Local vector RAG index for the SDK56 agent — Voyage embeddings + cosine search over the SDK 56 docs and this repo's app/ and src/. Zero runtime dependencies (Node 18+ global fetch).",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "node build-index.js",
+    "build:dry": "node build-index.js --dry-run",
+    "build:fake": "node build-index.js --fake",
+    "query": "node query.js"
+  }
+}

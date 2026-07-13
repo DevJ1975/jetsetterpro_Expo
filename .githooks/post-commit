@@ -1,0 +1,20 @@
+#!/bin/sh
+# Auto-refresh the SDK56 RAG index after any commit that touches the corpus
+# (app/, src/, or the pinned SDK 56 docs). Runs in the background so it never
+# adds latency to your commit, and never fails the commit. Installed via
+#   git config core.hooksPath .githooks
+#
+# Requires VOYAGE_API_KEY in the environment to actually re-embed; without it the
+# worker just logs "skipped" and leaves the index untouched.
+
+ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+RAG="$ROOT/.claude/skills/expo-sdk-56/rag"
+[ -f "$RAG/rebuild.sh" ] || exit 0
+
+# Only act when this commit changed corpus files.
+CHANGED=$(git diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null)
+echo "$CHANGED" | grep -Eq '^(app/|src/|\.claude/skills/expo-sdk-56/(SKILL\.md|references/))' || exit 0
+
+# Detach fully so `git commit` returns immediately; the worker logs to its own file.
+nohup sh "$RAG/rebuild.sh" >/dev/null 2>&1 &
+exit 0

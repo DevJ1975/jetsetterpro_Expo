@@ -93,6 +93,7 @@ export default function MoreScreen() {
 
   // Ported screens route directly; everything else lands on the shared "coming soon".
   const REAL_ROUTES: Record<string, string> = {
+    iris: '/iris',
     packing: '/packing',
     currency: '/currency',
     wallet: '/wallet',

@@ -4,6 +4,7 @@ import { Text, View } from 'react-native';
 import { Button, Card, palette, spacing, type } from '@/src/ui';
 import { IrisOrb } from './components';
 import { evaluateSuggestions } from '@/src/core/ai/iris/triggers';
+import { useNow } from '@/src/core/useNow';
 import { useCheckIn } from '@/src/core/store/checkin';
 import { useIris } from '@/src/core/store/iris';
 import { useIrisSuggestions } from '@/src/core/store/irisSuggestions';
@@ -18,12 +19,13 @@ export function IrisSuggestionCard() {
   const isCheckedIn = useCheckIn((s) => s.isCheckedIn);
   const checkedIn = useCheckIn((s) => s.checkedIn);
   const queuePrompt = useIris((s) => s.queuePrompt);
+  const now = useNow(60_000); // re-evaluate time-gated suggestions each minute
 
   const suggestion = useMemo(() => {
-    const all = evaluateSuggestions(trips, isCheckedIn, new Date());
+    const all = evaluateSuggestions(trips, isCheckedIn, new Date(now));
     return all.find((s) => !dismissed.includes(s.dismissalKey));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trips, dismissed, checkedIn]);
+  }, [trips, dismissed, checkedIn, now]);
 
   if (!suggestion) return null;
 
