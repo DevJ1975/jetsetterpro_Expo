@@ -86,7 +86,12 @@ export default function LovedOnesScreen() {
         overline="Travel contacts"
         title="Loved Ones"
         right={
-          <Pressable onPress={() => setDraft(EMPTY_DRAFT)} hitSlop={10}>
+          <Pressable
+            onPress={() => setDraft(EMPTY_DRAFT)}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Add loved one"
+          >
             <Ionicons name="add-circle" size={28} color={palette.accent} />
           </Pressable>
         }
@@ -125,10 +130,17 @@ export default function LovedOnesScreen() {
                 <Pressable
                   onPress={() => setDraft({ id: c.id, name: c.name, phone: c.phone, relationship: c.relationship })}
                   hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Edit contact"
                 >
                   <Ionicons name="pencil" size={18} color={palette.bright} />
                 </Pressable>
-                <Pressable onPress={() => confirmRemove(c)} hitSlop={8}>
+                <Pressable
+                  onPress={() => confirmRemove(c)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Remove contact"
+                >
                   <Ionicons name="trash-outline" size={18} color={palette.bad} />
                 </Pressable>
               </View>

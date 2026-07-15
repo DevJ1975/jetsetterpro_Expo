@@ -150,7 +150,12 @@ export default function JournalScreen() {
       <BackHeader
         title="Trip Journal"
         right={
-          <Pressable onPress={pick} hitSlop={12}>
+          <Pressable
+            onPress={pick}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Add photos"
+          >
             <Ionicons name="add-circle" size={30} color={palette.accent} />
           </Pressable>
         }

@@ -97,6 +97,8 @@ export default function CarbonScreen() {
               alignItems: 'center',
               justifyContent: 'center',
             }}
+            accessibilityRole="button"
+            accessibilityLabel="Swap airports"
           >
             <Ionicons name="swap-horizontal" size={18} color={palette.bright} />
           </Pressable>
@@ -341,6 +343,9 @@ function StepperButton({
         justifyContent: 'center',
         opacity: disabled ? 0.4 : 1,
       }}
+      accessibilityRole="button"
+      accessibilityLabel={icon === 'add' ? 'Increase passengers' : 'Decrease passengers'}
+      accessibilityState={{ disabled: !!disabled }}
     >
       <Ionicons name={icon} size={18} color={palette.bright} />
     </Pressable>

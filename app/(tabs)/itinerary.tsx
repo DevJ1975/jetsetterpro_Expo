@@ -24,7 +24,12 @@ export default function ItineraryScreen() {
           overline={`${trips.length} ${trips.length === 1 ? 'trip' : 'trips'}`}
           title="Itinerary"
           right={
-            <Pressable onPress={() => router.push('/add-trip')} hitSlop={12}>
+            <Pressable
+              onPress={() => router.push('/add-trip')}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Add trip"
+            >
               <Ionicons name="add-circle" size={30} color={palette.accent} />
             </Pressable>
           }

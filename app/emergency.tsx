@@ -213,7 +213,12 @@ function ContactCard({
           <Text style={[type.caption, { marginTop: 2 }]}>Reachable straight from this screen</Text>
         </View>
         {!editing ? (
-          <Pressable onPress={startEdit} hitSlop={8}>
+          <Pressable
+            onPress={startEdit}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={contact ? 'Edit contact' : 'Add contact'}
+          >
             <Ionicons name={contact ? 'pencil' : 'add-circle'} size={20} color={palette.bright} />
           </Pressable>
         ) : null}

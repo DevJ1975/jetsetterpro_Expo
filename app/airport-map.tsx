@@ -308,7 +308,12 @@ export default function AirportMapScreen() {
                     {walkMinutes(haversineM(routeStart, selectedPoi.coordinate))} min walk
                   </Text>
                 </View>
-                <Pressable onPress={() => setSelectedPoi(null)} hitSlop={10}>
+                <Pressable
+                  onPress={() => setSelectedPoi(null)}
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close"
+                >
                   <Ionicons name="close-circle" size={22} color={palette.dim} />
                 </Pressable>
               </View>

@@ -50,7 +50,12 @@ export default function IdentityScreen() {
         overline="Digital ID · CLEAR · PreCheck · Global Entry"
         title="Identity & Trusted Traveler"
         right={
-          <Pressable onPress={() => router.push('/add-identity')} hitSlop={12}>
+          <Pressable
+            onPress={() => router.push('/add-identity')}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Add traveler number"
+          >
             <Ionicons name="add-circle" size={30} color={palette.accent} />
           </Pressable>
         }
@@ -192,6 +197,8 @@ export default function IdentityScreen() {
                           ])
                         }
                         hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel="Remove credential"
                       >
                         <Ionicons name="trash-outline" size={16} color={palette.faint} />
                       </Pressable>
@@ -368,7 +375,12 @@ function StatePickerSheet({
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={{ flex: 1, backgroundColor: 'rgba(3,5,10,0.6)' }}>
-        <Pressable style={{ flex: 1 }} onPress={onClose} />
+        <Pressable
+          style={{ flex: 1 }}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss"
+        />
         <View
           style={{
             maxHeight: '78%',
@@ -383,7 +395,12 @@ function StatePickerSheet({
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
             <Text style={[type.heading, { flex: 1 }]}>Select state</Text>
-            <Pressable onPress={onClose} hitSlop={10}>
+            <Pressable
+              onPress={onClose}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+            >
               <Ionicons name="close-circle" size={26} color={palette.dim} />
             </Pressable>
           </View>

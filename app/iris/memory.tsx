@@ -90,7 +90,12 @@ export default function IrisMemoryScreen() {
                       <Text style={type.body}>{p.value}</Text>
                       <Text style={[type.caption, { marginTop: 2 }]}>Saved {formatDate(p.createdAt)}</Text>
                     </View>
-                    <Pressable onPress={() => remove(p.id)} hitSlop={10}>
+                    <Pressable
+                      onPress={() => remove(p.id)}
+                      hitSlop={10}
+                      accessibilityRole="button"
+                      accessibilityLabel="Delete preference"
+                    >
                       <Ionicons name="trash-outline" size={18} color={palette.faint} />
                     </Pressable>
                   </View>

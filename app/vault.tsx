@@ -65,7 +65,12 @@ export default function VaultScreen() {
         title="Document Vault"
         right={
           unlocked ? (
-            <Pressable onPress={() => router.push('/add-document')} hitSlop={12}>
+            <Pressable
+              onPress={() => router.push('/add-document')}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Add document"
+            >
               <Ionicons name="add-circle" size={30} color={palette.accent} />
             </Pressable>
           ) : undefined
@@ -204,11 +209,21 @@ function DocumentCard({
               />
             ) : null}
             {doc.hasNumber ? (
-              <Pressable onPress={onToggleReveal} hitSlop={8}>
+              <Pressable
+                onPress={onToggleReveal}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={revealedNumber ? 'Hide number' : 'Reveal number'}
+              >
                 <Ionicons name={revealedNumber ? 'eye-off' : 'eye'} size={18} color={palette.bright} />
               </Pressable>
             ) : null}
-            <Pressable onPress={onRemove} hitSlop={8}>
+            <Pressable
+              onPress={onRemove}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Remove document"
+            >
               <Ionicons name="trash-outline" size={16} color={palette.faint} />
             </Pressable>
           </View>

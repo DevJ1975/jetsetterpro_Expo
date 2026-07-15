@@ -413,7 +413,12 @@ export default function RentalCarScreen() {
         onRequestClose={() => setSelected(null)}
       >
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
-          <Pressable style={{ flex: 1 }} onPress={() => setSelected(null)} />
+          <Pressable
+            style={{ flex: 1 }}
+            onPress={() => setSelected(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss"
+          />
           <View
             style={{
               maxHeight: '88%',
@@ -447,7 +452,13 @@ export default function RentalCarScreen() {
                   </View>
                   <View style={{ flex: 1 }} />
                   <Badge tone="accent" label={classMeta(selected.vehicleClass).label} />
-                  <Pressable onPress={() => setSelected(null)} hitSlop={8} style={{ marginLeft: spacing.md }}>
+                  <Pressable
+                    onPress={() => setSelected(null)}
+                    hitSlop={8}
+                    style={{ marginLeft: spacing.md }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Close"
+                  >
                     <Ionicons name="close-circle" size={26} color={palette.dim} />
                   </Pressable>
                 </View>

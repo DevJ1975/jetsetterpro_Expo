@@ -27,7 +27,12 @@ export default function LuggageScreen() {
         overline="AirTag & WorldTracer"
         title="Luggage Tracker"
         right={
-          <Pressable onPress={() => router.push('/add-bag')} hitSlop={12}>
+          <Pressable
+            onPress={() => router.push('/add-bag')}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Add bag"
+          >
             <Ionicons name="add-circle" size={30} color={palette.accent} />
           </Pressable>
         }
@@ -146,7 +151,13 @@ function BagCard({ bag, onOpen, onRemove }: { bag: Bag; onOpen: () => void; onRe
             style={{ flex: 1 }}
           />
         ) : null}
-        <Pressable onPress={onRemove} hitSlop={8} style={{ paddingHorizontal: spacing.xs }}>
+        <Pressable
+          onPress={onRemove}
+          hitSlop={8}
+          style={{ paddingHorizontal: spacing.xs }}
+          accessibilityRole="button"
+          accessibilityLabel="Remove bag"
+        >
           <Ionicons name="trash-outline" size={16} color={palette.faint} />
         </Pressable>
       </View>

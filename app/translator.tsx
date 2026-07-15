@@ -134,7 +134,12 @@ export default function TranslatorScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
               <Text style={[type.overline, { color: palette.bright, flex: 1 }]}>Source</Text>
               {source ? (
-                <Pressable onPress={clearSource} hitSlop={8}>
+                <Pressable
+                  onPress={clearSource}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear text"
+                >
                   <Ionicons name="close-circle" size={18} color={palette.dim} />
                 </Pressable>
               ) : null}
@@ -165,7 +170,12 @@ export default function TranslatorScreen() {
               {translate.isPending ? (
                 <ActivityIndicator size="small" color={palette.accent} />
               ) : translated ? (
-                <Pressable onPress={() => speak(translated)} hitSlop={8}>
+                <Pressable
+                  onPress={() => speak(translated)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Speak translation"
+                >
                   <Ionicons name="volume-high" size={20} color={palette.bright} />
                 </Pressable>
               ) : null}
@@ -275,7 +285,12 @@ export default function TranslatorScreen() {
                   <Text style={[type.caption, { color: palette.faint, marginTop: 1 }]}>{line.p}</Text>
                 ) : null}
               </View>
-              <Pressable onPress={() => speak(line.t)} hitSlop={8}>
+              <Pressable
+                onPress={() => speak(line.t)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Speak phrase"
+              >
                 <Ionicons name="volume-high" size={22} color={palette.bright} />
               </Pressable>
             </View>

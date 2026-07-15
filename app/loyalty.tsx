@@ -39,7 +39,12 @@ export default function LoyaltyScreen() {
         overline={`${accounts.length} ${accounts.length === 1 ? 'program' : 'programs'}`}
         title="Miles & Loyalty"
         right={
-          <Pressable onPress={() => router.push('/add-loyalty')} hitSlop={12}>
+          <Pressable
+            onPress={() => router.push('/add-loyalty')}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Add program"
+          >
             <Ionicons name="add-circle" size={30} color={palette.accent} />
           </Pressable>
         }

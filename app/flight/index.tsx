@@ -150,7 +150,12 @@ export default function FlightTrackerScreen() {
             style={{ flex: 1, color: palette.text, fontSize: 15, fontFamily: MONO, letterSpacing: 1 }}
           />
           {query.length > 0 ? (
-            <Pressable onPress={() => setQuery('')} hitSlop={8}>
+            <Pressable
+              onPress={() => setQuery('')}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+            >
               <Ionicons name="close-circle" size={16} color={palette.faint} />
             </Pressable>
           ) : null}
@@ -202,6 +207,8 @@ export default function FlightTrackerScreen() {
               onPress={() => (live ? status.refetch() : searched && setSearched({ ...searched, at: Date.now() }))}
               hitSlop={8}
               style={{ marginLeft: 6 }}
+              accessibilityRole="button"
+              accessibilityLabel="Refresh status"
             >
               <Ionicons name="refresh" size={14} color={palette.bright} />
             </Pressable>

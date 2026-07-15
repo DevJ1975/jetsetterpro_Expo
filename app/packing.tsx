@@ -185,10 +185,20 @@ export default function PackingScreen() {
         right={
           total > 0 ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg }}>
-              <Pressable onPress={confirmRegenerate} hitSlop={10}>
+              <Pressable
+                onPress={confirmRegenerate}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Regenerate list"
+              >
                 <Ionicons name="refresh" size={22} color={palette.bright} />
               </Pressable>
-              <Pressable onPress={() => setAddOpen(true)} hitSlop={10}>
+              <Pressable
+                onPress={() => setAddOpen(true)}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Add item"
+              >
                 <Ionicons name="add-circle" size={28} color={palette.accent} />
               </Pressable>
             </View>
@@ -472,6 +482,9 @@ function StepperButton({
         justifyContent: 'center',
         opacity: disabled ? 0.4 : 1,
       }}
+      accessibilityRole="button"
+      accessibilityLabel={icon === 'add' ? 'Increase quantity' : 'Decrease quantity'}
+      accessibilityState={{ disabled: !!disabled }}
     >
       <Ionicons name={icon} size={18} color={palette.bright} />
     </Pressable>

@@ -311,7 +311,12 @@ export default function CountryDetailScreen() {
                       {line.p}
                     </Text>
                   ) : null}
-                  <Pressable onPress={() => speak(line.t, language.code)} hitSlop={8}>
+                  <Pressable
+                    onPress={() => speak(line.t, language.code)}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Speak phrase"
+                  >
                     <Ionicons name="volume-high" size={18} color={palette.accent} />
                   </Pressable>
                 </View>

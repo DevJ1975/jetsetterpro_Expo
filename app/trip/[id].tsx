@@ -87,6 +87,8 @@ export default function TripDetailScreen() {
             <Pressable
               onPress={() => router.push({ pathname: '/add-item', params: { tripId: trip.id } })}
               hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Add item"
             >
               <Ionicons name="add-circle" size={30} color={palette.accent} />
             </Pressable>
@@ -122,6 +124,8 @@ export default function TripDetailScreen() {
                         ])
                       }
                       hitSlop={10}
+                      accessibilityRole="button"
+                      accessibilityLabel="Remove item"
                     >
                       <Ionicons name="ellipsis-horizontal" size={20} color={palette.faint} />
                     </Pressable>
