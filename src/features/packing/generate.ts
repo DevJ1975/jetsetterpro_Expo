@@ -1,11 +1,23 @@
 import { makeId, parseDate } from '@/src/core/format';
 import type { PackingItem, Trip } from '@/src/types/models';
 
-// Deterministic, weather-agnostic packing list scaled by trip length. (The AI-
-// generated, weather-aware version arrives when IRIS's packing tool is wired to
-// a generation backend; this keeps the feature fully usable offline today.)
+// Deterministic packing list scaled by trip length, with an optional weather
+// hint (destination forecast → rain gear / warm layers / sun protection). (The
+// AI-generated version arrives when IRIS's packing tool is wired to a
+// generation backend; this keeps the feature fully usable offline today.)
 
-export function generatePackingList(trip: Trip, previous?: PackingItem[]): PackingItem[] {
+/** Optional destination-weather hint (from useWeather) to tailor the list. */
+export interface WeatherHint {
+  tempC?: number;
+  /** e.g. 'Light rain', 'Overcast' — matched loosely for rain gear. */
+  description?: string;
+}
+
+export function generatePackingList(
+  trip: Trip,
+  previous?: PackingItem[],
+  weather?: WeatherHint,
+): PackingItem[] {
   const start = parseDate(trip.startDate);
   const end = parseDate(trip.endDate);
   const nights = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000));
@@ -35,6 +47,18 @@ export function generatePackingList(trip: Trip, previous?: PackingItem[]): Packi
   ]);
   push('Toiletries', ['Toothbrush & paste', 'Deodorant', 'Skincare', 'Razor', 'Sunscreen']);
   push('Electronics', ['Headphones', 'Laptop / tablet', 'Travel adapter', 'Cables']);
+
+  // Weather-aware extras (additive — no hint, no change).
+  const desc = weather?.description?.toLowerCase() ?? '';
+  if (/rain|drizzle|shower|thunder/.test(desc)) {
+    push('Clothing', ['Rain jacket', 'Compact umbrella']);
+  }
+  if (weather?.tempC != null && weather.tempC <= 8) {
+    push('Clothing', ['Warm coat', 'Gloves & beanie']);
+  }
+  if (weather?.tempC != null && weather.tempC >= 28) {
+    push('Essentials', ['Sunglasses', 'Hat / cap']);
+  }
 
   return list;
 }
