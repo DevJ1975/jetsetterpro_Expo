@@ -123,13 +123,31 @@ export default function IrisScreen() {
           title="IRIS"
           right={
             <View style={{ flexDirection: 'row', gap: spacing.lg }}>
-              <Pressable onPress={clear} hitSlop={10}>
+              <Pressable
+                onPress={clear}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="New chat"
+                accessibilityHint="Clears this conversation and starts a new one"
+              >
                 <Ionicons name="create-outline" size={24} color={palette.bright} />
               </Pressable>
-              <Pressable onPress={() => router.push('/iris/memory')} hitSlop={10}>
+              <Pressable
+                onPress={() => router.push('/iris/memory')}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Saved memories"
+                accessibilityHint="Review what IRIS remembers about you"
+              >
                 <Ionicons name="bookmark-outline" size={24} color={palette.bright} />
               </Pressable>
-              <Pressable onPress={() => router.push('/iris/profile')} hitSlop={10}>
+              <Pressable
+                onPress={() => router.push('/iris/profile')}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Learned profile"
+                accessibilityHint="Review the preferences IRIS has learned"
+              >
                 <Ionicons name="sparkles-outline" size={24} color={palette.bright} />
               </Pressable>
             </View>
@@ -209,7 +227,15 @@ export default function IrisScreen() {
               onSubmitEditing={dispatch}
               returnKeyType="send"
             />
-            <Pressable onPress={dispatch} disabled={!canSend} hitSlop={8} style={{ paddingBottom: 6 }}>
+            <Pressable
+              onPress={dispatch}
+              disabled={!canSend}
+              hitSlop={8}
+              style={{ paddingBottom: 6 }}
+              accessibilityRole="button"
+              accessibilityLabel="Send message"
+              accessibilityState={{ disabled: !canSend }}
+            >
               <Ionicons
                 name="arrow-up-circle"
                 size={36}

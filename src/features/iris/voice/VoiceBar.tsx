@@ -22,7 +22,16 @@ export function MicButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} disabled={disabled} hitSlop={8} style={{ paddingBottom: 6 }}>
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      hitSlop={8}
+      style={{ paddingBottom: 6 }}
+      accessibilityRole="button"
+      accessibilityLabel={active ? 'Stop voice input' : 'Start voice input'}
+      accessibilityHint={active ? 'Ends the hands-free voice session' : 'Talk to IRIS hands-free'}
+      accessibilityState={{ disabled }}
+    >
       <Ionicons
         name={active ? 'stop-circle' : 'mic-outline'}
         size={32}
