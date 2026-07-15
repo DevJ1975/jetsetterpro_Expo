@@ -4,7 +4,7 @@ import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
@@ -17,7 +17,7 @@ import { auth, ensureSignedIn } from '@/src/core/firebase/auth';
 import { isFirebaseConfigured } from '@/src/core/firebase/config';
 import { reconcile } from '@/src/core/firebase/firestore';
 import { ErrorBoundary } from '@/src/features/common/ErrorBoundary';
-import { palette } from '@/src/ui';
+import { Splash, palette } from '@/src/ui';
 import { fontAssets } from '@/src/ui/theme/fonts';
 
 export const unstable_settings = { anchor: '(tabs)' };
@@ -57,6 +57,9 @@ function RootNavigator() {
   const onboarded = usePreferences((s) => s.hasCompletedOnboarding);
   const segments = useSegments();
   const router = useRouter();
+  // Animated brand splash (iOS SplashScreenView parity) plays once per cold
+  // start, over the app, right after the native splash hides.
+  const [splashDone, setSplashDone] = useState(false);
 
   // Backend bootstrap: anonymous-first sign-in, then reconcile local ⇄ cloud.
   useEffect(() => {
@@ -95,14 +98,17 @@ function RootNavigator() {
   if (!hydrated) return null;
 
   return (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: palette.ink } }}>
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="onboarding" />
-      <Stack.Screen name="trip/[id]" />
-      <Stack.Screen name="feature/[slug]" />
-      <Stack.Screen name="add-trip" options={{ presentation: 'modal' }} />
-      <Stack.Screen name="add-item" options={{ presentation: 'modal' }} />
-      <Stack.Screen name="add-expense" options={{ presentation: 'modal' }} />
-    </Stack>
+    <>
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: palette.ink } }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="onboarding" />
+        <Stack.Screen name="trip/[id]" />
+        <Stack.Screen name="feature/[slug]" />
+        <Stack.Screen name="add-trip" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="add-item" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="add-expense" options={{ presentation: 'modal' }} />
+      </Stack>
+      {!splashDone ? <Splash onDone={() => setSplashDone(true)} /> : null}
+    </>
   );
 }

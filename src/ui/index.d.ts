@@ -120,3 +120,57 @@ export const ProgressBar: ComponentType<{
 }>;
 
 export const SectionLabel: ComponentType<{ children: ReactNode; style?: StyleProp<ViewStyle> }>;
+
+// ── Signature components (iOS UI/Components ports) ─────────────────────────
+
+export const SplitFlapText: ComponentType<{
+  text: string;
+  characterWidth?: number;
+  characterHeight?: number;
+  fontSize?: number;
+  tint?: string;
+  background?: string;
+  staggerDelay?: number;
+  stepDuration?: number;
+}>;
+
+export type CounterFormat = 'integer' | { decimal: number } | { currency: string };
+export const AnimatedCounter: ComponentType<{
+  target: number;
+  duration?: number;
+  format?: CounterFormat;
+  style?: StyleProp<TextStyle>;
+}>;
+export function formatCounterValue(value: number, format: CounterFormat): string;
+
+export const CardAppear: ComponentType<{
+  children?: ReactNode;
+  delay?: number;
+  style?: StyleProp<ViewStyle>;
+}>;
+
+export const ProgressRing: ComponentType<{
+  progress: number;
+  size?: number;
+  strokeWidth?: number;
+  color?: string;
+  trackColor?: string;
+  children?: ReactNode;
+  style?: StyleProp<ViewStyle>;
+}>;
+
+export const StarField: ComponentType<{ count?: number; seed?: number }>;
+
+export const SuccessAnimation: ComponentType<{
+  title: string;
+  subtitle: string;
+  referenceNumber?: string | null;
+  onDismiss: () => void;
+}>;
+
+export const Splash: ComponentType<{ onDone: () => void }>;
+
+export const FLAP_ALPHABET: readonly string[];
+export function normalizeFlapChar(char: string): string;
+export function nextFlapChar(current: string): string;
+export function flapDistance(current: string, target: string): number;
