@@ -1,7 +1,8 @@
+import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Text, View } from 'react-native';
-import { Card, Input, spacing, type } from '@/src/ui';
+import { Card, Input, palette, spacing, type } from '@/src/ui';
 import { Screen } from '@/src/features/common/Screen';
 import { ModalHeader } from '@/src/features/common/ModalHeader';
 import { Chips } from '@/src/features/common/Chips';
@@ -30,22 +31,27 @@ export default function AddWalletScreen() {
       code: code.trim() || undefined,
       date,
     });
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.back();
   };
 
   return (
     <Screen contentStyle={{ paddingHorizontal: spacing.xl }} edges={['top']}>
-      <ModalHeader title="Add Pass" onSave={save} saveDisabled={!valid} />
+      <ModalHeader title="Add to Wallet" onSave={save} saveDisabled={!valid} />
       <Card style={{ gap: spacing.lg }}>
         <View style={{ gap: spacing.sm }}>
-          <Text style={[type.overline, { color: '#8B92A8' }]}>Type</Text>
+          <Text style={[type.overline, { color: palette.dim }]}>Document type</Text>
           <Chips options={WALLET_KINDS} value={kind} onChange={setKind} labelOf={(k) => WALLET_META[k].label} />
         </View>
         <Input label="Title" placeholder="Museum of Fine Arts" value={title} onChangeText={setTitle} autoFocus />
         <Input label="Subtitle (optional)" placeholder="Boston Pitch Day" value={subtitle} onChangeText={setSubtitle} />
         <Input label="Code / confirmation (optional)" value={code} onChangeText={setCode} autoCapitalize="characters" />
-        <Input label="Date" value={date} onChangeText={setDate} autoCapitalize="none" />
+        <Input label="Date" value={date} onChangeText={setDate} autoCapitalize="none" placeholder="YYYY-MM-DD" />
       </Card>
+      <Text style={[type.caption, { marginTop: spacing.md, paddingHorizontal: spacing.xs }]}>
+        Boarding passes added here appear under the matching flight and support
+        online check-in.
+      </Text>
     </Screen>
   );
 }
