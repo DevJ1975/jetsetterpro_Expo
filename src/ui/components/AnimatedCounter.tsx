@@ -28,12 +28,20 @@ export default function AnimatedCounter({
   duration = 1.0,
   format = 'integer',
   style,
+  maxFontSizeMultiplier = 1.4,
 }: {
   target: number;
   /** Seconds, like the iOS API. */
   duration?: number;
   format?: CounterFormat;
   style?: StyleProp<TextStyle>;
+  /**
+   * Caps Dynamic Type growth so the app's large stat numbers can't blow out
+   * their fixed-height tiles at the accessibility text sizes. 1.4 leaves real
+   * headroom for larger-text users while keeping the tile intact; pass a looser
+   * value for numbers that live in a flexible container.
+   */
+  maxFontSizeMultiplier?: number;
 }) {
   const [display, setDisplay] = useState(0);
   const fromRef = useRef(0);
@@ -64,7 +72,7 @@ export default function AnimatedCounter({
   }, [target, duration, reduceMotion]);
 
   return (
-    <Text style={[{ fontVariant: ['tabular-nums'] }, style]}>
+    <Text style={[{ fontVariant: ['tabular-nums'] }, style]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
       {formatCounterValue(reduceMotion ? target : display, format)}
     </Text>
   );
