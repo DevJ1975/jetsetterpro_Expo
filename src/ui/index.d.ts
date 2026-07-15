@@ -119,10 +119,4 @@ export const ProgressBar: ComponentType<{
   style?: StyleProp<ViewStyle>;
 }>;
 
-export const TabBar: ComponentType<{
-  tabs: { key: string; label: string; icon?: (active: boolean) => ReactNode }[];
-  activeKey: string;
-  onChange: (key: string) => void;
-}>;
-
 export const SectionLabel: ComponentType<{ children: ReactNode; style?: StyleProp<ViewStyle> }>;

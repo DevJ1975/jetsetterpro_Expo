@@ -36,13 +36,26 @@ describe('ProgressBar clamp', () => {
 });
 
 describe('Card variant fallback', () => {
-  it('uses the solid background for an unknown variant', () => {
-    // Off-union variant (cast) to exercise the fallback added to Card.
-    const json = render(<Card variant={'bogus' as never}>x</Card>).toJSON() as unknown as {
-      props: { style: unknown };
-    };
-    const flat = StyleSheet.flatten(json.props.style) as { backgroundColor?: string };
-    expect(flat.backgroundColor).toBe(palette.surface); // === the 'solid' background
+  // Walk the rendered tree collecting every flattened backgroundColor.
+  function collectFills(node: unknown, out: string[] = []): string[] {
+    if (!node || typeof node !== 'object') return out;
+    const n = node as { props?: { style?: unknown }; children?: unknown[] };
+    const flat = StyleSheet.flatten(n.props?.style) as { backgroundColor?: string } | undefined;
+    if (flat?.backgroundColor) out.push(flat.backgroundColor);
+    for (const child of n.children ?? []) collectFills(child, out);
+    return out;
+  }
+
+  it('renders a filled glass card for an unknown variant (never background-less)', () => {
+    // Off-union variant (cast) exercises the fallback: unknown → glass.
+    const json = render(<Card variant={'bogus' as never}>x</Card>).toJSON();
+    const fills = collectFills(json);
+    expect(fills.length).toBeGreaterThan(0);
+  });
+
+  it("keeps 'solid' opaque for list-heavy screens", () => {
+    const json = render(<Card variant="solid">x</Card>).toJSON();
+    expect(collectFills(json)).toContain(palette.surface);
   });
 });
 

@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useRef, useState } from 'react';
+import { BottomTabBarHeightContext } from 'expo-router/tabs';
+import React, { useCallback, useContext, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -98,6 +99,10 @@ export default function IrisScreen() {
     }, [stopVoice]),
   );
 
+  // iOS floats the tab bar over a blur; keep the composer above it.
+  const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
+  const floatingInset = Platform.OS === 'ios' ? tabBarHeight : 0;
+
   const canSend = draft.trim().length > 0 && !isResponding && !voiceActive;
   // Don't let voice start mid-way through a typed turn — its reply read-back
   // would race the streaming response.
@@ -128,7 +133,7 @@ export default function IrisScreen() {
         />
 
         <KeyboardAvoidingView
-          style={{ flex: 1 }}
+          style={{ flex: 1, paddingBottom: floatingInset }}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={8}
         >

@@ -6,5 +6,4 @@ export { default as ListRow } from './ListRow';
 export { default as ScreenHeader } from './ScreenHeader';
 export { default as Input } from './Input';
 export { default as ProgressBar } from './ProgressBar';
-export { default as TabBar } from './TabBar';
 export { default as SectionLabel } from './SectionLabel';
