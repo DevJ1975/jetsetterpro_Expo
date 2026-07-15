@@ -11,6 +11,14 @@ export interface VaultDoc {
   name: string;
   expiry?: string; // ISO date
   hasNumber: boolean;
+  /** Local uri of an attached photo of the physical document (image-picker). */
+  photoUri?: string;
+}
+
+/** Offline emergency contact surfaced in Emergency Mode. */
+export interface EmergencyContact {
+  name: string;
+  phone: string;
 }
 
 export const DOC_TYPES: DocType[] = ['passport', 'visa', 'id', 'insurance', 'vaccination', 'other'];
@@ -40,8 +48,11 @@ export function removeDocNumber(id: string): Promise<void> {
 
 interface VaultState {
   docs: VaultDoc[];
+  /** Emergency-mode contact ({name, phone}); metadata only, editable inline. */
+  emergencyContact?: EmergencyContact;
   addMeta: (d: VaultDoc) => void;
   remove: (id: string) => void;
+  setEmergencyContact: (c?: EmergencyContact) => void;
   /** Purge every doc's secure-store number, then clear metadata. Awaited by
    *  account deletion so the Keychain entries don't outlive the account. */
   clearAll: () => Promise<void>;
@@ -51,14 +62,16 @@ export const useVault = create<VaultState>()(
   persist(
     (set, get) => ({
       docs: [],
+      emergencyContact: undefined,
       addMeta: (d) => set({ docs: [...get().docs, d] }),
       remove: (id) => {
         void removeDocNumber(id);
         set({ docs: get().docs.filter((x) => x.id !== id) });
       },
+      setEmergencyContact: (c) => set({ emergencyContact: c }),
       clearAll: async () => {
         await Promise.all(get().docs.map((d) => removeDocNumber(d.id)));
-        set({ docs: [] });
+        set({ docs: [], emergencyContact: undefined });
       },
     }),
     { name: 'jetsetter_vault_documents', storage: zustandStorage },
