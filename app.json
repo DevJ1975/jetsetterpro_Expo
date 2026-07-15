@@ -14,6 +14,7 @@
     },
     "android": {
       "package": "com.trainovate.jetsetterpro",
+      "googleServicesFile": "./firebase/google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#06070D",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -28,11 +29,45 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font",
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "node_modules/@expo-google-fonts/nunito/400Regular/Nunito_400Regular.ttf",
+            "node_modules/@expo-google-fonts/nunito/500Medium/Nunito_500Medium.ttf",
+            "node_modules/@expo-google-fonts/nunito/600SemiBold/Nunito_600SemiBold.ttf",
+            "node_modules/@expo-google-fonts/nunito/700Bold/Nunito_700Bold.ttf",
+            "node_modules/@expo-google-fonts/nunito/800ExtraBold/Nunito_800ExtraBold.ttf"
+          ]
+        }
+      ],
       "expo-image",
       "expo-sharing",
       "expo-status-bar",
       "expo-web-browser",
+      "react-native-maps",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "JetSetter Pro shows your position on airport and in-flight maps and detects your pickup location for ground transport."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "JetSetter Pro uses the camera to scan boarding-pass barcodes and receipts.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#3B9EF0",
+          "defaultChannel": "default"
+        }
+      ],
+      "expo-task-manager",
+      "expo-background-task",
       [
         "expo-splash-screen",
         {
