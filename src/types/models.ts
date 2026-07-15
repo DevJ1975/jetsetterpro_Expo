@@ -25,6 +25,33 @@ export interface ItineraryItem {
   location?: string;
   confirmation?: string;
   notes?: string;
+
+  // Structured booking detail for externally-booked travel — flattened port of
+  // the iOS FlightBookingDetails / HotelBookingDetails / CarRentalDetails
+  // (ItineraryModel.swift). All optional and purely additive so pre-existing
+  // saved trips (and the cross-platform wire contract) keep decoding cleanly.
+  /** Flight: seat, e.g. '14A'. */
+  seat?: string;
+  /** Flight: Economy / Premium / Business / First. */
+  cabinClass?: string;
+  /** Flight: departure terminal. */
+  terminal?: string;
+  /** Flight: departure gate. */
+  gate?: string;
+  /** Booking cost amount (reference-only; not linked to Expenses). */
+  cost?: number;
+  /** ISO 4217 code for `cost`, e.g. 'USD'. */
+  currency?: string;
+  /** Airline / hotel chain / rental company. */
+  provider?: string;
+  /** Hotel: street address. */
+  address?: string;
+  /** Hotel: room type, e.g. 'King, Suite'. */
+  roomType?: string;
+  /** Rental car: pickup location. */
+  pickupLocation?: string;
+  /** Rental car: drop-off location. */
+  dropoffLocation?: string;
 }
 
 export interface PackingItem {
