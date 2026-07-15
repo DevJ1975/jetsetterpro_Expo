@@ -104,12 +104,12 @@ export async function reconcile(localTrips: Trip[], localExpenses: Expense[]): P
 /** Wipe the signed-in user's Firestore subtree (used by account deletion). */
 export async function wipeAllRemote(): Promise<void> {
   if (!ready()) return;
-  const [trips, expenses] = await Promise.all([
-    getDocs(collection(db, 'users', uid()!, 'trips')),
-    getDocs(collection(db, 'users', uid()!, 'expenses')),
-  ]);
-  await Promise.all([
-    ...trips.docs.map((d) => deleteDoc(d.ref)),
-    ...expenses.docs.map((d) => deleteDoc(d.ref)),
-  ]);
+  const subcollections = ['trips', 'expenses', 'pushTokens', 'disruptions', 'duffelOrders'];
+  const snaps = await Promise.all(
+    subcollections.map((c) => getDocs(collection(db, 'users', uid()!, c))),
+  );
+  await Promise.all(snaps.flatMap((snap) => snap.docs.map((d) => deleteDoc(d.ref))));
+  // Root-collection watch docs are keyed by uid field, not the subtree.
+  const { wipeFlightWatches } = await import('./flightWatches');
+  await wipeFlightWatches();
 }
