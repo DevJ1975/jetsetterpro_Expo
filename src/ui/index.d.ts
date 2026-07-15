@@ -7,12 +7,16 @@ export type PaletteKey =
   | 'accent'
   | 'bright'
   | 'deep'
+  | 'blueMuted'
+  | 'primaryDeep'
   | 'ink'
   | 'bgMid'
   | 'bgDeep'
+  | 'background'
   | 'surface'
   | 'surfaceGlass'
   | 'elevated'
+  | 'elevated2'
   | 'text'
   | 'dim'
   | 'faint'
@@ -21,6 +25,7 @@ export type PaletteKey =
   | 'bad'
   | 'line'
   | 'lineStrong'
+  | 'separator'
   | 'fillAccent'
   | 'fillGood'
   | 'fillWarn'
@@ -31,10 +36,16 @@ export type PaletteKey =
 
 export const palette: Record<PaletteKey, string>;
 // Tuple type (min 2 stops) so it satisfies expo-linear-gradient's `colors` prop.
+export type GradientStops = readonly [string, string, ...string[]];
 export const gradients: Record<
-  'hero' | 'brand' | 'progress' | 'goldText',
-  readonly [string, string, ...string[]]
->;
+  'hero' | 'brand' | 'progress' | 'goldText' | 'cardBorder' | 'cardInnerGlow',
+  GradientStops
+> & { brandLocations: readonly [number, number, ...number[]] };
+
+export const fonts: {
+  rounded: Record<'regular' | 'medium' | 'semibold' | 'bold' | 'extrabold', string>;
+};
+export const fontAssets: Record<string, number>;
 
 export type TypeKey =
   | 'display'

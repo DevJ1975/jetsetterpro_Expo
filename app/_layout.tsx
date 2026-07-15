@@ -1,5 +1,6 @@
 import { DarkTheme, ThemeProvider } from 'expo-router/react-navigation';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -17,6 +18,7 @@ import { isFirebaseConfigured } from '@/src/core/firebase/config';
 import { reconcile } from '@/src/core/firebase/firestore';
 import { ErrorBoundary } from '@/src/features/common/ErrorBoundary';
 import { palette } from '@/src/ui';
+import { fontAssets } from '@/src/ui/theme/fonts';
 
 export const unstable_settings = { anchor: '(tabs)' };
 
@@ -44,7 +46,10 @@ export default function RootLayout() {
 function useHydrated(): boolean {
   const prefs = usePreferences((s) => s._hasHydrated);
   const travel = useTravel((s) => s._hasHydrated);
-  return prefs && travel;
+  // Brand fonts register at runtime; `error` unblocks rather than strands the
+  // splash (text falls back to the system face).
+  const [fontsLoaded, fontError] = useFonts(fontAssets);
+  return prefs && travel && (fontsLoaded || fontError != null);
 }
 
 function RootNavigator() {
