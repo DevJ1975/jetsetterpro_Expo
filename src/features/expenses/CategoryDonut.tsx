@@ -29,9 +29,11 @@ export function CategoryDonut({
   const circumference = 2 * Math.PI * radius;
   const positive = segments.filter((s) => s.value > 0);
   const total = positive.reduce((sum, s) => sum + s.value, 0);
-  // iOS SectorMark(angularInset: 2) — a slim gap between slices, skipped for a
-  // single slice (a full ring needs no seams).
-  const gap = positive.length > 1 ? 3 : 0;
+  // Round caps give the soft "pill segment" look (Apple Health / premium
+  // fintech); they extend each arc by ~strokeWidth/2 per end, so the seam gap
+  // must exceed strokeWidth or slices visually merge. Single slice = no seam.
+  const rounded = positive.length > 1;
+  const gap = rounded ? strokeWidth + 2 : 0;
 
   let start = 0;
   const arcs = positive.map((s, i) => {
@@ -45,6 +47,7 @@ export function CategoryDonut({
         r={radius}
         stroke={s.color}
         strokeWidth={strokeWidth}
+        strokeLinecap={rounded ? 'round' : 'butt'}
         fill="none"
         strokeDasharray={`${dash} ${Math.max(0.001, circumference - dash)}`}
         strokeDashoffset={-(start + gap / 2)}

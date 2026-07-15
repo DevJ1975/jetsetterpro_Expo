@@ -14,7 +14,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StarField, gradients, hitSlop, spacing } from '@/src/ui';
+import { StarField, SuccessAnimation, gradients, hitSlop, spacing } from '@/src/ui';
 import { usePreferences } from '@/src/core/store/preferences';
 import { CurrencyPickerModal } from '@/src/features/onboarding/CurrencyPickerModal';
 import { GradientCTA } from '@/src/features/onboarding/GradientCTA';
@@ -40,6 +40,7 @@ export default function Onboarding() {
 
   const scrollRef = useRef<ScrollView>(null);
   const [page, setPage] = useState(0);
+  const [celebrating, setCelebrating] = useState(false);
   const [name, setName] = useState('');
   const [homeAirport, setHomeAirport] = useState('');
   const [currency, setCurrency] = useState('USD');
@@ -59,6 +60,12 @@ export default function Onboarding() {
     if (trimmedName) profile.name = trimmedName;
     if (airportValid) profile.homeAirport = homeAirport.trim().toUpperCase();
     setProfile(profile);
+    // Celebrate first; the success overlay commits onboarding + navigates on
+    // dismiss (completing it earlier would trip the root gate and unmount us).
+    setCelebrating(true);
+  };
+
+  const completeAndGo = () => {
     completeOnboarding();
     router.replace('/');
   };
@@ -152,6 +159,14 @@ export default function Onboarding() {
         }}
         onClose={() => setPickerOpen(false)}
       />
+
+      {celebrating ? (
+        <SuccessAnimation
+          title="You're all set"
+          subtitle={name.trim() ? `Welcome aboard, ${name.trim()}.` : 'Welcome aboard.'}
+          onDismiss={completeAndGo}
+        />
+      ) : null}
     </View>
   );
 }
