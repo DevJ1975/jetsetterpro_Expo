@@ -19,6 +19,7 @@ import {
   MessageBubble,
   ThinkingDots,
 } from '@/src/features/iris/components';
+import { LearningPrompt } from '@/src/features/iris/LearningPrompt';
 import { MicButton, VoiceBar } from '@/src/features/iris/voice/VoiceBar';
 import { useIrisVoice } from '@/src/features/iris/voice/useIrisVoice';
 import { composeGreeting } from '@/src/core/ai/iris/agent';
@@ -128,6 +129,9 @@ export default function IrisScreen() {
               <Pressable onPress={() => router.push('/iris/memory')} hitSlop={10}>
                 <Ionicons name="bookmark-outline" size={24} color={palette.bright} />
               </Pressable>
+              <Pressable onPress={() => router.push('/iris/profile')} hitSlop={10}>
+                <Ionicons name="sparkles-outline" size={24} color={palette.bright} />
+              </Pressable>
             </View>
           }
         />
@@ -144,6 +148,8 @@ export default function IrisScreen() {
             onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
             keyboardShouldPersistTaps="handled"
           >
+            <LearningPrompt />
+
             {messages.length === 0 && !isResponding ? (
               <Text style={[type.bodyDim, { marginTop: spacing.md }]}>{composeGreeting(knownPrefs)}</Text>
             ) : null}

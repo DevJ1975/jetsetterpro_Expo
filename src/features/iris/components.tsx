@@ -6,13 +6,21 @@ import { palette, radii, spacing, type } from '@/src/ui';
 import { useIris } from '@/src/core/store/iris';
 import { PendingKind, useIrisRouter } from '@/src/core/store/irisRouter';
 
-// IRIS's restrained "executive rainbow" (indigo → periwinkle → sky → teal).
-const RAINBOW = ['#6B5BE6', '#4E8FE8', '#3B9EF0', '#2FBFB8'] as const;
+// IRIS's full-spectrum identity — the 6-stop rainbow from the native app
+// (IRISSuggestionCardView.swift rainbowGradient).
+export const IRIS_SPECTRUM = [
+  '#E84040',
+  '#E8A020',
+  '#FFEB00',
+  '#1DB97D',
+  '#3B9EF0',
+  '#7B3FBF',
+] as const;
 
 export function IrisOrb({ size = 22 }: { size?: number }) {
   return (
     <LinearGradient
-      colors={RAINBOW}
+      colors={IRIS_SPECTRUM}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={{

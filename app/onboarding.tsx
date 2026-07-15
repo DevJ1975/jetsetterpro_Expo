@@ -1,86 +1,182 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { Text, View } from 'react-native';
-import { Button, Card, Input, ScreenHeader, SectionLabel, spacing, type } from '@/src/ui';
-import { Screen } from '@/src/features/common/Screen';
-import { IconWell } from '@/src/features/common/IconWell';
+import React, { useRef, useState } from 'react';
+import {
+  KeyboardAvoidingView,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StarField, gradients, hitSlop, spacing } from '@/src/ui';
 import { usePreferences } from '@/src/core/store/preferences';
+import { CurrencyPickerModal } from '@/src/features/onboarding/CurrencyPickerModal';
+import { GradientCTA } from '@/src/features/onboarding/GradientCTA';
+import { HeroPage } from '@/src/features/onboarding/HeroPage';
+import { LogoPill } from '@/src/features/onboarding/LogoPill';
+import { PageDots } from '@/src/features/onboarding/PageDots';
+import { SetupPage } from '@/src/features/onboarding/SetupPage';
+import { HERO_PAGES, currencyLabel } from '@/src/features/onboarding/content';
 
-const HIGHLIGHTS: { icon: string; title: string; body: string }[] = [
-  { icon: 'sparkles', title: 'IRIS travel agent', body: 'An AI that knows your itinerary and acts on it.' },
-  { icon: 'airplane', title: 'Live flights & disruptions', body: 'Tracking, rebooking, and leave-by timing.' },
-  { icon: 'stats-chart', title: 'Expenses on autopilot', body: 'Scan, categorize, and submit in a tap.' },
-];
+// Onboarding — port of iOS `OnboardingView.swift`: hero gradient + star field,
+// animated logo pill, three hero pages and a setup form in a paged carousel,
+// capsule page dots, and a gradient CTA. Profile fields are staged locally and
+// committed atomically on "Get Started"; Skip completes onboarding without
+// persisting a partially-typed profile.
+
+const PAGE_COUNT = HERO_PAGES.length + 1;
 
 export default function Onboarding() {
   const router = useRouter();
   const setProfile = usePreferences((s) => s.setProfile);
   const completeOnboarding = usePreferences((s) => s.completeOnboarding);
+  const { width } = useWindowDimensions();
 
+  const scrollRef = useRef<ScrollView>(null);
+  const [page, setPage] = useState(0);
   const [name, setName] = useState('');
   const [homeAirport, setHomeAirport] = useState('');
-  const [homeCurrency, setHomeCurrency] = useState('USD');
+  const [currency, setCurrency] = useState('USD');
+  const [pickerOpen, setPickerOpen] = useState(false);
 
+  // A real IATA code is exactly three letters (e.g. JFK, ORD). Empty is fine —
+  // the airport is optional and simply isn't committed.
+  const airportValid = /^[A-Za-z]{3}$/.test(homeAirport.trim());
+  const lastPage = page === PAGE_COUNT - 1;
+
+  // Commit everything in one place so abandoning onboarding (or skipping)
+  // never leaves a partially-typed profile behind — same contract as the
+  // previous implementation and the iOS `completeOnboarding()`.
   const finish = () => {
-    setProfile({
-      name: name.trim(),
-      homeAirport: homeAirport.trim().toUpperCase(),
-      homeCurrency: homeCurrency.trim().toUpperCase() || 'USD',
-    });
+    const trimmedName = name.trim();
+    const profile: Parameters<typeof setProfile>[0] = { homeCurrency: currency };
+    if (trimmedName) profile.name = trimmedName;
+    if (airportValid) profile.homeAirport = homeAirport.trim().toUpperCase();
+    setProfile(profile);
     completeOnboarding();
     router.replace('/');
   };
 
-  // Skip proceeds without persisting a partially-typed profile; store defaults
-  // (name '', homeAirport '', homeCurrency 'USD') stand, and the user can fill
-  // this in later from Settings.
+  // Skip proceeds without persisting the staged fields; store defaults stand
+  // and the user can fill this in later from Settings.
   const skip = () => {
     completeOnboarding();
     router.replace('/');
   };
 
+  const goToPage = (i: number) => {
+    scrollRef.current?.scrollTo({ x: i * width, animated: true });
+    setPage(i);
+  };
+
+  const onMomentumEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const i = Math.round(e.nativeEvent.contentOffset.x / width);
+    setPage(Math.max(0, Math.min(PAGE_COUNT - 1, i)));
+  };
+
   return (
-    <Screen contentStyle={{ paddingHorizontal: spacing.xl }}>
-      <ScreenHeader overline="Welcome aboard" title="JetSetter Pro" style={{ paddingHorizontal: 0 }} />
+    <View style={{ flex: 1 }}>
+      <LinearGradient
+        colors={gradients.hero}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <StarField count={60} seed={7} />
 
-      <Card variant="glass" style={{ gap: spacing.md }}>
-        <SectionLabel>Your travel co-pilot</SectionLabel>
-        {HIGHLIGHTS.map((h) => (
-          <View key={h.title} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-            <IconWell name={h.icon} />
-            <View style={{ flex: 1 }}>
-              <Text style={type.sub}>{h.title}</Text>
-              <Text style={[type.bodyDim, { marginTop: 2 }]}>{h.body}</Text>
-            </View>
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.header}>
+            <LogoPill />
+            <Pressable
+              onPress={skip}
+              hitSlop={hitSlop}
+              style={styles.skip}
+              accessibilityRole="button"
+              accessibilityHint="Finishes setup without entering profile details"
+            >
+              <Text style={styles.skipText}>Skip</Text>
+            </Pressable>
           </View>
-        ))}
-      </Card>
 
-      <Card style={{ marginTop: spacing.lg, gap: spacing.lg }}>
-        <SectionLabel>Set up your profile</SectionLabel>
-        <Input label="Your name" placeholder="Jamil" value={name} onChangeText={setName} autoCapitalize="words" />
-        <Input
-          label="Home airport"
-          placeholder="JFK"
-          value={homeAirport}
-          onChangeText={setHomeAirport}
-          autoCapitalize="characters"
-          maxLength={4}
-        />
-        <Input
-          label="Home currency"
-          placeholder="USD"
-          value={homeCurrency}
-          onChangeText={setHomeCurrency}
-          autoCapitalize="characters"
-          maxLength={3}
-        />
-      </Card>
+          <ScrollView
+            ref={scrollRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            onMomentumScrollEnd={onMomentumEnd}
+            style={{ flex: 1 }}
+          >
+            {HERO_PAGES.map((p, i) => (
+              <HeroPage key={p.kicker} page={p} width={width} active={page === i} />
+            ))}
+            <SetupPage
+              width={width}
+              name={name}
+              onNameChange={setName}
+              airport={homeAirport}
+              onAirportChange={setHomeAirport}
+              airportValid={airportValid}
+              currencyLabel={currencyLabel(currency)}
+              onOpenCurrency={() => setPickerOpen(true)}
+            />
+          </ScrollView>
 
-      <View style={{ marginTop: spacing.xl, gap: spacing.md }}>
-        <Button title="Enter JetSetter Pro" size="lg" onPress={finish} />
-        <Button title="Skip for now" variant="ghost" size="md" onPress={skip} />
-      </View>
-    </Screen>
+          <View style={styles.controls}>
+            <PageDots count={PAGE_COUNT} index={page} />
+            <GradientCTA
+              title={lastPage ? 'Get Started' : 'Continue'}
+              icon={lastPage ? 'checkmark' : 'arrow-forward'}
+              onPress={lastPage ? finish : () => goToPage(page + 1)}
+            />
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+
+      <CurrencyPickerModal
+        visible={pickerOpen}
+        selected={currency}
+        onSelect={(code) => {
+          setCurrency(code);
+          setPickerOpen(false);
+        }}
+        onClose={() => setPickerOpen(false)}
+      />
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  header: {
+    alignItems: 'center',
+    paddingTop: spacing.lg,
+  },
+  skip: {
+    position: 'absolute',
+    right: spacing.xl,
+    top: spacing.lg,
+    bottom: 0,
+    justifyContent: 'center',
+  },
+  skipText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.55)',
+  },
+  controls: {
+    paddingHorizontal: 32,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xl,
+    gap: spacing.xl,
+  },
+});
