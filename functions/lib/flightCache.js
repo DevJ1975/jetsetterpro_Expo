@@ -86,7 +86,9 @@ async function getStatusCached(ident, date, provider) {
   const key = cacheKey(ident, date);
   const now = Date.now();
   const cached = await readCache(key);
-  if (cached && now < cached.freshUntil && cached.flight) {
+  // Serve any fresh entry, including a negative one (flight: null) — that's the
+  // 10-min bad-ident suppression. Guard on the field's presence, not truthiness.
+  if (cached && now < cached.freshUntil && 'flight' in cached) {
     return { flight: cached.flight };
   }
 

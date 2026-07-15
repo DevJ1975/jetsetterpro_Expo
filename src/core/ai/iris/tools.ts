@@ -7,6 +7,7 @@ import { addTripToCalendar } from '@/src/core/services/calendar';
 import { useCheckIn } from '@/src/core/store/checkin';
 import { useIrisMemory, type MemoryCategory } from '@/src/core/store/irisMemory';
 import { useIrisRouter, type Destination, type PendingKind } from '@/src/core/store/irisRouter';
+import { extractFlightNumber } from '@/src/core/ai/iris/triggers';
 import { activeOrNextTrip, nextUpcomingFlight, useTravel } from '@/src/core/store/travel';
 import type { ExpenseCategory } from '@/src/types/models';
 
@@ -314,15 +315,20 @@ export async function executeIrisTool(
     case 'checkInForFlight': {
       const explicit = str(input, 'flightNumber');
       const next = nextUpcomingFlight(travel.trips);
-      const flight = explicit ?? next?.item.title ?? '';
-      if (!flight) return { content: 'No upcoming flight to check in for.' };
-      const summary = `Check in for ${flight}`;
+      // The check-in store is keyed by the pure flight ident (e.g. "AA100") —
+      // every consumer looks it up that way. The fallback title is
+      // "AA100 JFK → LAX", so extract the ident before storing, or the
+      // check-in would be invisible to the rest of the app.
+      const ident = explicit ?? (next ? (extractFlightNumber(next.item.title) ?? undefined) : undefined);
+      const label = explicit ?? next?.item.title ?? '';
+      if (!ident) return { content: 'No upcoming flight to check in for.' };
+      const summary = `Check in for ${label}`;
       return stage(
         'checkIn',
         summary,
         async () => {
-          useCheckIn.getState().markCheckedIn(flight);
-          return `Checked in for ${flight}.`;
+          useCheckIn.getState().markCheckedIn(ident);
+          return `Checked in for ${label}.`;
         },
         `Prepared: ${summary}. Ask the user to confirm — not checked in yet.`,
       );

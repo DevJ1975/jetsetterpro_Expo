@@ -30,6 +30,19 @@ function estDep(flight) {
   );
 }
 
+function schedDep(flight) {
+  return (flight.origin && flight.origin.times && flight.origin.times.scheduled) || null;
+}
+
+/** Total delay vs the (stable) scheduled departure, in minutes; 0 if unknown. */
+function totalDelayMin(flight) {
+  const sched = schedDep(flight);
+  const est = estDep(flight);
+  if (!sched || !est) return 0;
+  const min = Math.round((Date.parse(est) - Date.parse(sched)) / 60000);
+  return Number.isFinite(min) && min > 0 ? min : 0;
+}
+
 /** Pure diff: previous snapshot vs fresh status → list of events. */
 function diffEvents(prev, flight) {
   const events = [];
@@ -50,9 +63,14 @@ function diffEvents(prev, flight) {
   } else if (!prev && gate == null) {
     // first snapshot with no gate — nothing to compare yet
   }
-  if (prev && prev.estDep && dep) {
-    const slipMin = Math.round((Date.parse(dep) - Date.parse(prev.estDep)) / 60000);
-    if (slipMin >= DELAY_NOTIFY_MIN) {
+  // Measure delay against the STABLE scheduled time, not the previous run's
+  // estimate — otherwise a delay that accrues gradually (10 min per run) never
+  // crosses the threshold in any single diff. Re-notify only when the total
+  // delay grows by another DELAY_NOTIFY_MIN beyond what we last told the user.
+  {
+    const slipMin = totalDelayMin(flight);
+    const notified = (prev && prev.notifiedDelayMin) || 0;
+    if (slipMin >= DELAY_NOTIFY_MIN && slipMin >= notified + DELAY_NOTIFY_MIN) {
       events.push({
         kind: 'DELAY',
         message: `${flight.ident} is now delayed — departure moved ${slipMin} min later.`,
@@ -143,10 +161,16 @@ const disruptionWatch = onSchedule(
 
       for (const w of group) {
         const events = diffEvents(w.lastSnapshot, flight);
+        const delayEvent = events.find((e) => e.kind === 'DELAY');
         const snapshot = {
           status: flight.status,
           gate: (flight.origin && flight.origin.gate) || null,
           estDep: estDep(flight),
+          // Carry forward the last-notified delay level so gradual slips
+          // re-notify only at each new DELAY_NOTIFY_MIN step, not every run.
+          notifiedDelayMin: delayEvent
+            ? delayEvent.delta.delayMin
+            : (w.lastSnapshot && w.lastSnapshot.notifiedDelayMin) || 0,
         };
         const updates = { lastSnapshot: snapshot, lastCheckedAt: new Date().toISOString() };
         await w.ref.set(updates, { merge: true });

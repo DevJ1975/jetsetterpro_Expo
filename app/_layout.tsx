@@ -91,7 +91,9 @@ function RootNavigator() {
           const cur = useTravel.getState();
           const merged = await reconcile(cur.trips, cur.expenses);
           if (!cancelled) useTravel.getState().setAll(merged.trips, merged.expenses);
-          void registerForPush();
+          // Honor the persisted flight-alerts opt-out — re-registering
+          // unconditionally would silently revert a user's "off" on every launch.
+          if (usePreferences.getState().flightAlerts !== false) void registerForPush();
           void syncFlightWatches(merged.trips);
         }
       }
@@ -134,6 +136,12 @@ function RootNavigator() {
         <Stack.Screen name="add-trip" options={{ presentation: 'modal' }} />
         <Stack.Screen name="add-item" options={{ presentation: 'modal' }} />
         <Stack.Screen name="add-expense" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="add-bag" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="add-document" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="add-identity" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="add-loyalty" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="add-wallet" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
       </Stack>
       {!splashDone ? <Splash onDone={() => setSplashDone(true)} /> : null}
     </>

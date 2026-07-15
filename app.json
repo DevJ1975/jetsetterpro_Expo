@@ -63,6 +63,19 @@
         }
       ],
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "JetSetter Pro attaches photos of your documents, receipts, and journal entries.",
+          "cameraPermission": "JetSetter Pro uses the camera to capture documents, receipts, and journal photos."
+        }
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "JetSetter Pro reads the barometer to estimate your in-flight altitude."
+        }
+      ],
+      [
         "expo-notifications",
         {
           "color": "#3B9EF0",

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { auth } from '@/src/core/firebase/auth';
 import { isFirebaseConfigured } from '@/src/core/firebase/config';
 import { db } from '@/src/core/firebase/firestore';
+import { useSession } from '@/src/core/store/session';
 
 // Disruption events written by the scheduled `disruptionWatch` function into
 // users/{uid}/disruptions — consumed live by the dashboard + home banner.
@@ -24,11 +25,15 @@ export interface DisruptionEvent {
 /** Live feed of the user's disruption events, newest first. */
 export function useDisruptions(max = 20): DisruptionEvent[] {
   const [events, setEvents] = useState<DisruptionEvent[]>([]);
+  // Depend on the session uid so the listener (re)attaches once anonymous
+  // sign-in resolves — on cold start the home banner mounts before auth is
+  // ready, and auth.currentUser alone would never re-trigger this effect.
+  const uid = useSession((s) => s.userId);
   useEffect(() => {
-    const uid = auth.currentUser?.uid;
-    if (!isFirebaseConfigured() || !uid) return;
+    const activeUid = uid ?? auth.currentUser?.uid;
+    if (!isFirebaseConfigured() || !activeUid) return;
     const q = query(
-      collection(db, 'users', uid, 'disruptions'),
+      collection(db, 'users', activeUid, 'disruptions'),
       orderBy('createdAt', 'desc'),
       fbLimit(max),
     );
@@ -37,7 +42,7 @@ export function useDisruptions(max = 20): DisruptionEvent[] {
       (snap) => setEvents(snap.docs.map((d) => d.data() as DisruptionEvent)),
       () => setEvents([]),
     );
-  }, [max]);
+  }, [max, uid]);
   return events;
 }
 

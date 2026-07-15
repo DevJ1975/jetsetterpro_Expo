@@ -22,7 +22,7 @@ export async function clearAllLocalData(): Promise<void> {
   useLoyalty.setState({ accounts: [] });
   useWallet.setState({ items: [] });
   useIdentity.setState({ credentials: [] });
-  useCheckIn.setState({ checkedIn: {} });
+  useCheckIn.setState({ checkedIn: {}, seats: {} });
   useJournal.setState({ photos: {} });
   useLuggage.setState({ bags: [] });
   await useVault.getState().clearAll(); // metadata + Keychain document numbers

@@ -60,7 +60,7 @@ export default function DuffelAncillariesSheet({
   var post = function(msg){ window.ReactNativeWebView.postMessage(JSON.stringify(msg)); };
   try {
     var el = document.getElementById('anc');
-    var input = ${JSON.stringify(input)};
+    var input = ${JSON.stringify(input).replace(/</g, '\\u003c')};
     var data = JSON.parse(input);
     el.addEventListener('onPayloadReady', function(e){
       post({ type: 'payloadReady', payload: e.detail && e.detail.data, metadata: e.detail && e.detail.metadata });
