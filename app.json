@@ -10,7 +10,10 @@
     "backgroundColor": "#06070D",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.trainovate.jetsetterpro"
+      "bundleIdentifier": "com.trainovate.jetsetterpro",
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": ["uber", "lyft"]
+      }
     },
     "android": {
       "package": "com.trainovate.jetsetterpro",
