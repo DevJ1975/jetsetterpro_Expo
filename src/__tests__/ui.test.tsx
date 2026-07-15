@@ -3,6 +3,7 @@ import { StyleSheet } from 'react-native';
 import TestRenderer, { act, type ReactTestRenderer } from 'react-test-renderer';
 // Import via the typed barrel so props resolve to the declared (optional) types.
 import { Badge, Button, Card, ProgressBar, palette } from '@/src/ui';
+import { clampProgress } from '@/src/ui/components/ProgressBar';
 
 // react-test-renderer needs the initial render committed inside act() on React 19.
 function render(element: React.ReactElement): ReactTestRenderer {
@@ -13,25 +14,21 @@ function render(element: React.ReactElement): ReactTestRenderer {
   return tree;
 }
 
-type InnerFill = { children: { props: { style: { width: string } } }[] };
-
-/** Render, then read the inner fill's width string (ProgressBar's inner View). */
-function progressWidth(value: number): string {
-  const json = render(<ProgressBar value={value} />).toJSON() as unknown as InnerFill;
-  return json.children[0].props.style.width;
-}
-
 describe('ProgressBar clamp', () => {
-  it('clamps into [0, 1] and maps to a percent width', () => {
-    expect(progressWidth(0)).toBe('0%');
-    expect(progressWidth(0.5)).toBe('50%');
-    expect(progressWidth(1)).toBe('100%');
-    expect(progressWidth(1.5)).toBe('100%'); // over-range clamps
-    expect(progressWidth(-0.5)).toBe('0%'); // under-range clamps
+  it('clamps into [0, 1] (the animated fill width is clampProgress × 100%)', () => {
+    expect(clampProgress(0)).toBe(0);
+    expect(clampProgress(0.5)).toBe(0.5);
+    expect(clampProgress(1)).toBe(1);
+    expect(clampProgress(1.5)).toBe(1); // over-range clamps
+    expect(clampProgress(-0.5)).toBe(0); // under-range clamps
   });
 
-  it('guards NaN → 0% (regression for the unguarded width math)', () => {
-    expect(progressWidth(NaN)).toBe('0%');
+  it('guards NaN → 0 (regression for the unguarded width math)', () => {
+    expect(clampProgress(NaN)).toBe(0);
+  });
+
+  it('still renders without crashing', () => {
+    expect(() => render(<ProgressBar value={0.5} />)).not.toThrow();
   });
 });
 

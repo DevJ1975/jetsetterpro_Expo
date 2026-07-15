@@ -74,6 +74,7 @@ export const Button: ComponentType<{
   size?: 'lg' | 'md' | 'sm';
   icon?: ReactNode;
   disabled?: boolean;
+  loading?: boolean;
   style?: StyleProp<ViewStyle>;
 }>;
 
