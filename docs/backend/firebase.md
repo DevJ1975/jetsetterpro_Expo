@@ -1,78 +1,122 @@
 # Firebase backend (JetSetter Pro — `jetsetter-pro`)
 
-The Expo app uses **Firebase Auth + Firestore**. The web config is committed as
-defaults in `src/core/firebase/config.ts` (Firebase API keys are client-public —
-security is enforced by Firestore rules), so the app connects out-of-the-box.
+The Expo app uses **Firebase Auth + Firestore + Cloud Functions**. The web
+config is committed as defaults in `src/core/firebase/config.ts` (Firebase API
+keys are client-public — security is enforced by Firestore rules), so the app
+connects out-of-the-box.
 
 ## Data model
 
 Per-user subtree — each user reads/writes only their own:
 
 ```
-users/{uid}/trips/{tripId}       ← Trip documents (two-way synced)
-users/{uid}/expenses/{expenseId} ← Expense documents (two-way synced)
+users/{uid}/trips/{tripId}          ← Trip documents (two-way synced)
+users/{uid}/expenses/{expenseId}    ← Expense documents (two-way synced)
+users/{uid}/pushTokens/{token}      ← Expo push tokens (device registration)
+users/{uid}/disruptions/{eventId}   ← flight-disruption events (written by disruptionWatch)
+users/{uid}/duffelOrders/{orderId}  ← booking records (ownership guard for cancel)
 ```
 
-- **Auth:** anonymous-first (`ensureSignedIn`), email upgrade LINKS the same uid
-  (`upgradeToEmail`), account deletion wipes the subtree then deletes the user.
-- **Sync:** push on every mutation, pull+merge on launch (`reconcile`). No-ops
-  until signed in.
+Root collections (Cloud Functions use the Admin SDK; clients are rules-scoped):
+
+```
+flightWatches/{uid}_{IDENT}_{DATE}  ← flat mirror of upcoming flights (client-owned, uid-scoped)
+flightCache/{IDENT_DATE}            ← shared flight-status cache (admin-only; TTL on purgeAt)
+usage/translate_{uid}_{day}, _global_{month}  ← translation char budgets (admin-only)
+meta/flightQuota_{YYYYMM}           ← monthly upstream-call counter (admin-only)
+```
+
+- **Auth:** anonymous-first (`ensureSignedIn`), email upgrade LINKS the same uid,
+  account deletion wipes the subtree + root watch docs then deletes the user.
+- **Sync:** push on every mutation, pull+merge on launch (`reconcile`).
+
+## Cloud Functions
+
+All live in `functions/` (modular; `index.js` is the entry). Every function
+verifies the caller's Firebase ID token (`lib/auth.js`) and rate-limits per uid.
+
+| Function | Trigger | Purpose | Secret(s) |
+|---|---|---|---|
+| `aiIris` | HTTPS POST | Streaming Anthropic proxy (IRIS) | `ANTHROPIC_API_KEY` |
+| `flightData` | HTTPS GET | Flight status/position (cache-through) | `AERODATABOX_API_KEY`, `OPENSKY_*` (opt) |
+| `translate` | HTTPS POST | Google Cloud Translation v2 (ADC) | — (service account) |
+| `duffelApi` | HTTPS POST | Flight booking — offers/seats/orders/cancel (test mode) | `DUFFEL_API_KEY` |
+| `disruptionWatch` | Schedule (10 min) | Diffs flight status → events + Expo push | `AERODATABOX_API_KEY`, `EXPO_ACCESS_TOKEN` (opt) |
+
+The **flight cache** (`lib/flightCache.js`) is the free-tier protector: entries
+are keyed by flight+date and shared across all users, with phase-aware TTLs
+(6 h before departure, 5 min in the flight window, 90 s for positions, frozen
+after arrival) and a monthly upstream-call budget that serves stale data rather
+than exceeding quota.
 
 ## One-time console setup (owner)
 
 In the [Firebase console](https://console.firebase.google.com/project/jetsetter-pro):
 
-1. **Authentication → Sign-in method:** enable **Anonymous** and **Email/Password**.
-2. **Firestore Database:** create the database (production mode).
-3. Deploy the security rules + function (from this repo, with the Firebase CLI):
-   ```bash
-   npm --prefix functions install
-   firebase deploy --only firestore:rules
-   firebase functions:secrets:set ANTHROPIC_API_KEY   # paste your Anthropic key
-   firebase deploy --only functions
-   ```
-4. Copy the deployed `aiIris` URL into `.env.local`:
-   ```
-   EXPO_PUBLIC_AI_ENDPOINT=https://us-central1-jetsetter-pro.cloudfunctions.net/aiIris
-   ```
+1. **Upgrade to the Blaze (pay-as-you-go) plan** — required for outbound HTTP
+   from functions (Anthropic, AeroDataBox, Expo push, Translation) and Cloud
+   Scheduler (`disruptionWatch`). Free-tier grants still apply; expected beta
+   cost ≈ $0.
+2. **Authentication → Sign-in method:** enable **Anonymous** and **Email/Password**.
+3. **Firestore Database:** create it (production mode).
+4. **APIs:** enable the **Cloud Translation API** on the GCP project (one click;
+   `translate` runs on the default functions service account via ADC — no key).
+5. **Firestore TTL:** add a TTL policy on collection group `flightCache`, field
+   `purgeAt` (console → Firestore → TTL, or
+   `gcloud firestore fields ttls update purgeAt --collection-group=flightCache --enable-ttl`).
 
-Without step 3–4, the app still runs and syncs trips/expenses; **IRIS falls back
-to demo responses** until `aiIris` is deployed and the endpoint is set.
-
-## Turnkey deploy (owner's machine)
-
-Deploy must run where you're signed in to Google — it can't run in CI/agent
-sandboxes (no Firebase credentials there). One-time prerequisites:
+## Secrets (owner, once)
 
 ```bash
-npm i -g firebase-tools     # install the CLI
-firebase login              # authenticate as the project owner
-firebase functions:secrets:set ANTHROPIC_API_KEY   # paste your Anthropic key (once)
+firebase functions:secrets:set ANTHROPIC_API_KEY     # IRIS (required for live AI)
+firebase functions:secrets:set AERODATABOX_API_KEY   # flight data (RapidAPI → AeroDataBox Basic, free)
+firebase functions:secrets:set DUFFEL_API_KEY        # booking (Duffel test-mode token)
+firebase functions:secrets:set OPENSKY_CLIENT_ID     # optional — richer live positions
+firebase functions:secrets:set OPENSKY_CLIENT_SECRET # optional
+firebase functions:secrets:set EXPO_ACCESS_TOKEN     # optional — authenticated Expo push
 ```
 
-Then, from the repo root, the convenience scripts wrap the CLI:
+## Deploy (owner's machine — needs Google auth, can't run in CI/agents)
 
 ```bash
-npm run deploy:rules        # Firestore security rules only
-npm run deploy:functions    # installs functions deps, deploys aiIris
-npm run deploy:backend      # both rules + functions in one shot
+npm i -g firebase-tools && firebase login   # one-time
+npm run deploy:rules        # Firestore security rules
+npm run deploy:functions    # installs functions deps, deploys all 5 functions + scheduler
+npm run deploy:backend      # both in one shot
 ```
 
-After the first `deploy:functions`, copy the printed `aiIris` URL into
-`.env.local` as `EXPO_PUBLIC_AI_ENDPOINT` (see step 4 above) and restart the
-bundler so the app picks it up.
+After the first `deploy:functions`, set the public base URL(s) in `.env.local`
+(and `eas.json` already carries them for builds):
+
+```
+EXPO_PUBLIC_API_BASE=https://us-central1-jetsetter-pro.cloudfunctions.net
+EXPO_PUBLIC_AI_ENDPOINT=https://us-central1-jetsetter-pro.cloudfunctions.net/aiIris
+```
+
+**Graceful degradation:** without deploy, the app still runs and syncs
+trips/expenses. IRIS uses demo responses, flight/translation/booking features
+show their honest "activates when the backend is deployed" states, and the TSA
+estimate + offline phrasebook keep working (they need no backend).
+
+## Push notifications (EAS credentials)
+
+Disruption alerts send via the **Expo Push service** (`getExpoPushTokenAsync` →
+`disruptionWatch` POSTs to `exp.host`). EAS holds the platform credentials — no
+messaging secrets in the functions:
+
+```bash
+eas credentials   # iOS: upload/generate the APNs key; Android: upload the FCM V1 service-account JSON
+```
+
+`android.googleServicesFile` is wired in `app.json` (the file is committed);
+the `expo-notifications` plugin registers the FCM service.
 
 ## Security
 
-- Firestore rules (`firebase/firestore.rules`) enforce `request.auth.uid == uid` —
-  the per-user backbone (the Firebase analog of Supabase RLS).
-- The **Anthropic key** lives only in the `aiIris` Cloud Function secret, never
-  in the app bundle. `aiIris` verifies the caller's Firebase ID token, allow-lists
-  the model, bounds the request, and rate-limits per user.
-
-## Native Firebase (optional, later)
-
-This uses the **firebase JS SDK** (one config, iOS + Android, works in Expo Go).
-For native features (Analytics, FCM push) add `@react-native-firebase/*` + the
-config plugin and drop `firebase/google-services.json` (already saved) +
-`GoogleService-Info.plist` into a dev build.
+- Firestore rules (`firebase/firestore.rules`) enforce `request.auth.uid == uid`
+  for the user subtree and a uid-scoped `flightWatches` block; `flightCache`,
+  `usage`, and `meta` have no client match (admin-only).
+- Every provider key lives only in a Cloud Function secret, never in the app
+  bundle. Functions verify the Firebase ID token, bound requests, and rate-limit
+  per user; `duffelApi` re-checks order ownership before cancel and recomputes
+  the charge server-side.
