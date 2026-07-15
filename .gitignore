@@ -41,3 +41,7 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Firebase (deploy cache + CLI debug logs)
+.firebase/
+firebase-debug*.log

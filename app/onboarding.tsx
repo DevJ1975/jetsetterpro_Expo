@@ -31,6 +31,14 @@ export default function Onboarding() {
     router.replace('/');
   };
 
+  // Skip proceeds without persisting a partially-typed profile; store defaults
+  // (name '', homeAirport '', homeCurrency 'USD') stand, and the user can fill
+  // this in later from Settings.
+  const skip = () => {
+    completeOnboarding();
+    router.replace('/');
+  };
+
   return (
     <Screen contentStyle={{ paddingHorizontal: spacing.xl }}>
       <ScreenHeader overline="Welcome aboard" title="JetSetter Pro" style={{ paddingHorizontal: 0 }} />
@@ -71,7 +79,7 @@ export default function Onboarding() {
 
       <View style={{ marginTop: spacing.xl, gap: spacing.md }}>
         <Button title="Enter JetSetter Pro" size="lg" onPress={finish} />
-        <Button title="Skip for now" variant="ghost" size="md" onPress={finish} />
+        <Button title="Skip for now" variant="ghost" size="md" onPress={skip} />
       </View>
     </Screen>
   );

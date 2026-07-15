@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { ScrollView, StyleProp, View, ViewStyle } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleProp, ViewStyle } from 'react-native';
 import { Edge, SafeAreaView } from 'react-native-safe-area-context';
 import { gradients } from '@/src/ui';
 
@@ -22,11 +22,21 @@ export function Screen({
       contentContainerStyle={[{ paddingBottom: 56 }, contentStyle]}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
+      // Keeps the focused input above the keyboard on iOS (Android resizes the
+      // window via adjustResize, so the ScrollView already handles it there).
+      automaticallyAdjustKeyboardInsets
     >
       {children}
     </ScrollView>
   ) : (
-    <View style={[{ flex: 1 }, contentStyle]}>{children}</View>
+    // Non-scroll screens that host text inputs still need the keyboard to push
+    // content up rather than cover it.
+    <KeyboardAvoidingView
+      style={[{ flex: 1 }, contentStyle]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      {children}
+    </KeyboardAvoidingView>
   );
 
   return (

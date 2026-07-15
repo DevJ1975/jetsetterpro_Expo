@@ -31,7 +31,6 @@ export default function HomeScreen() {
   const router = useRouter();
   const name = usePreferences((s) => s.name);
   const homeCurrency = usePreferences((s) => s.homeCurrency);
-  const demoMode = usePreferences((s) => s.demoMode);
   const trips = useTravel((s) => s.trips);
   const expenses = useTravel((s) => s.expenses);
 
@@ -58,7 +57,6 @@ export default function HomeScreen() {
       <ScreenHeader
         overline={overline}
         title={`${greetingForNow()}${name ? `, ${name}` : ''}`}
-        right={demoMode ? <Badge tone="neutral" label="Demo" /> : undefined}
         style={{ paddingHorizontal: 0 }}
       />
 

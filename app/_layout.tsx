@@ -7,7 +7,6 @@ import React, { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
-import { demoExpenses, demoTrips } from '@/src/core/demo/mockData';
 import { queryClient } from '@/src/core/query';
 import { usePreferences } from '@/src/core/store/preferences';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -16,6 +15,7 @@ import { useTravel } from '@/src/core/store/travel';
 import { auth, ensureSignedIn } from '@/src/core/firebase/auth';
 import { isFirebaseConfigured } from '@/src/core/firebase/config';
 import { reconcile } from '@/src/core/firebase/firestore';
+import { ErrorBoundary } from '@/src/features/common/ErrorBoundary';
 import { palette } from '@/src/ui';
 
 export const unstable_settings = { anchor: '(tabs)' };
@@ -30,7 +30,9 @@ export default function RootLayout() {
           <ThemeProvider
             value={{ ...DarkTheme, colors: { ...DarkTheme.colors, background: palette.ink } }}
           >
-            <RootNavigator />
+            <ErrorBoundary>
+              <RootNavigator />
+            </ErrorBoundary>
             <StatusBar style="light" />
           </ThemeProvider>
         </QueryClientProvider>
@@ -48,29 +50,22 @@ function useHydrated(): boolean {
 function RootNavigator() {
   const hydrated = useHydrated();
   const onboarded = usePreferences((s) => s.hasCompletedOnboarding);
-  const demoMode = usePreferences((s) => s.demoMode);
   const segments = useSegments();
   const router = useRouter();
 
-  // Backend bootstrap: seed demo data, anonymous-first sign-in, reconcile sync.
+  // Backend bootstrap: anonymous-first sign-in, then reconcile local ⇄ cloud.
   useEffect(() => {
     if (!hydrated) return;
     let cancelled = false;
 
     (async () => {
-      const travel = useTravel.getState();
-      if (demoMode && travel.trips.length === 0 && travel.expenses.length === 0) {
-        travel.setAll(demoTrips(), demoExpenses());
-      }
-
       if (isFirebaseConfigured()) {
         const user = await ensureSignedIn();
         if (cancelled) return;
         useSession.getState().setFromUser(user);
         onAuthStateChanged(auth, (u) => useSession.getState().setFromUser(u));
 
-        // Only merge cloud data into a real (non-demo) local store.
-        if (user && !demoMode) {
+        if (user) {
           const cur = useTravel.getState();
           const merged = await reconcile(cur.trips, cur.expenses);
           if (!cancelled) useTravel.getState().setAll(merged.trips, merged.expenses);
@@ -81,7 +76,7 @@ function RootNavigator() {
     return () => {
       cancelled = true;
     };
-  }, [hydrated, demoMode]);
+  }, [hydrated]);
 
   // Splash + onboarding gate.
   useEffect(() => {

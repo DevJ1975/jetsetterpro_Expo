@@ -8,13 +8,10 @@ import { EmptyState } from '@/src/features/common/EmptyState';
 import { PremiumGate } from '@/src/features/common/PremiumGate';
 import { Chips } from '@/src/features/common/Chips';
 import { estimateCompensation, Region } from '@/src/core/services/compensation';
-import { formatTime } from '@/src/core/format';
-import { usePreferences } from '@/src/core/store/preferences';
 import { nextUpcomingFlight, useTravel } from '@/src/core/store/travel';
 
 export default function DisruptionScreen() {
   const trips = useTravel((s) => s.trips);
-  const demoMode = usePreferences((s) => s.demoMode);
   const flight = useMemo(() => nextUpcomingFlight(trips), [trips]);
 
   // Compensation calculator state.
@@ -33,17 +30,6 @@ export default function DisruptionScreen() {
     [region, intraEu, delay, distance],
   );
 
-  // Demo disruption: mark the soonest flight delayed so the loop is demonstrable.
-  const disrupted = demoMode && flight;
-  const alts = useMemo(() => {
-    if (!flight) return [];
-    const dep = new Date(flight.item.startDate).getTime();
-    return [
-      { label: 'Next available', at: new Date(dep + 2.5 * 3600_000) },
-      { label: 'Later option', at: new Date(dep + 4.5 * 3600_000) },
-    ];
-  }, [flight]);
-
   const rebook = () => {
     const q = encodeURIComponent(`flights ${flight?.item.title ?? ''}`);
     Linking.openURL(`https://www.google.com/travel/flights?q=${q}`).catch(() => {});
@@ -58,27 +44,8 @@ export default function DisruptionScreen() {
             <Card variant="glass">
               <EmptyState icon="warning" title="No flights to monitor" subtitle="Add a flight and IRIS will watch it for delays and cancellations." />
             </Card>
-          ) : disrupted ? (
-            <Card variant="glass" style={{ gap: spacing.md }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-                <StatusDot tone="bad" />
-                <Text style={[type.sub, { flex: 1 }]}>{flight.item.title}</Text>
-                <Badge tone="bad" label="+3H 35M" />
-              </View>
-              <Text style={type.bodyDim}>Delayed — I found alternatives that get you there sooner.</Text>
-              {alts.map((a) => (
-                <View key={a.label} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
-                  <Text style={type.body}>{a.label}</Text>
-                  <Text style={type.sub}>{formatTime(a.at.toISOString())}</Text>
-                </View>
-              ))}
-              <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs }}>
-                <Button title="Rebook" size="md" onPress={rebook} />
-                <Button title="Notify hotel" variant="secondary" size="md" onPress={() => Linking.openURL('sms:').catch(() => {})} />
-              </View>
-            </Card>
           ) : (
-            <Card variant="glass">
+            <Card variant="glass" style={{ gap: spacing.md }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
                 <StatusDot tone="good" />
                 <View style={{ flex: 1 }}>
@@ -86,6 +53,10 @@ export default function DisruptionScreen() {
                   <Text style={[type.bodyDim, { marginTop: 2 }]}>On time · monitoring for changes</Text>
                 </View>
                 <Badge tone="good" label="On time" />
+              </View>
+              <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs }}>
+                <Button title="Rebook options" size="md" onPress={rebook} />
+                <Button title="Notify hotel" variant="secondary" size="md" onPress={() => Linking.openURL('sms:').catch(() => {})} />
               </View>
             </Card>
           )}
