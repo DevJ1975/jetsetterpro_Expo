@@ -24,6 +24,7 @@ import { WALLET_META, WalletItem, useWallet } from '@/src/core/store/wallet';
 // generic hero + detail-rows layout of iOS `WalletItemDetailView`.
 
 export default function PassScreen() {
+  const router = useRouter();
   const { id, title, subtitle, code, location } = useLocalSearchParams<{
     id?: string;
     title?: string;
@@ -51,6 +52,8 @@ export default function PassScreen() {
             icon="wallet"
             title="Document not found"
             subtitle="This document is no longer in your wallet."
+            actionLabel="Back to Wallet"
+            onAction={() => router.replace('/wallet')}
           />
         </View>
       </Screen>

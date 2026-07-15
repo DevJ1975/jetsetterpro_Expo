@@ -1,9 +1,16 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { BottomTabBarHeightContext } from 'expo-router/tabs';
 import React, { useContext } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleProp, ViewStyle } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StyleProp,
+  ViewStyle,
+} from 'react-native';
 import { Edge, SafeAreaView } from 'react-native-safe-area-context';
-import { gradients } from '@/src/ui';
+import { gradients, palette } from '@/src/ui';
 
 /** App screen scaffold: hero-gradient background + safe area, per the design kit
  *  ("Base is palette.ink or the gradients.hero wash").
@@ -17,11 +24,16 @@ export function Screen({
   scroll = true,
   contentStyle,
   edges = ['top'],
+  onRefresh,
+  refreshing = false,
 }: {
   children: React.ReactNode;
   scroll?: boolean;
   contentStyle?: StyleProp<ViewStyle>;
   edges?: Edge[];
+  /** Enables pull-to-refresh on scrollable screens. */
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }) {
   const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
   const floatingInset = Platform.OS === 'ios' ? tabBarHeight : 0;
@@ -31,6 +43,17 @@ export function Screen({
       contentContainerStyle={[{ paddingBottom: 56 + floatingInset }, contentStyle]}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={palette.bright}
+            colors={[palette.accent]}
+            progressBackgroundColor={palette.elevated}
+          />
+        ) : undefined
+      }
       // Keeps the focused input above the keyboard on iOS (Android resizes the
       // window via adjustResize, so the ScrollView already handles it there).
       automaticallyAdjustKeyboardInsets

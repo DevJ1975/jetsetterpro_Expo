@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
+import { haptics } from '@/src/core/haptics';
 import {
   AnimatedCounter,
   Button,
@@ -49,6 +51,20 @@ export default function HomeScreen() {
   const expenses = useTravel((s) => s.expenses);
   const disruptions = useDisruptions(5);
   const now = useNow(60_000);
+  const queryClient = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Pull-to-refresh re-fetches the live layers (flight status, weather) behind
+  // the home cards.
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    haptics.impact('light');
+    try {
+      await queryClient.invalidateQueries();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [queryClient]);
 
   const trip = useMemo(() => activeOrNextTrip(trips), [trips]);
   const flight = useMemo(() => nextUpcomingFlight(trips), [trips]);
@@ -91,7 +107,7 @@ export default function HomeScreen() {
     .join(' · ');
 
   return (
-    <Screen contentStyle={{ paddingHorizontal: spacing.xl }}>
+    <Screen contentStyle={{ paddingHorizontal: spacing.xl }} onRefresh={onRefresh} refreshing={refreshing}>
       {/* ── Header: date kicker + greeting | weather mini-card ── */}
       <CardAppear delay={0} style={{ marginBottom: GAP }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingTop: spacing.md }}>

@@ -7,8 +7,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { type ComponentProps } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
-import { Badge, Button, Card, ProgressBar, palette, spacing, type } from '@/src/ui';
+import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Badge, Button, Card, ProgressBar, Skeleton, palette, radii, spacing, type } from '@/src/ui';
 import { BackHeader } from '@/src/features/common/BackHeader';
 import { Screen } from '@/src/features/common/Screen';
 import { isBackendConfigured } from '@/src/core/api/backend';
@@ -138,25 +138,32 @@ export default function FlightDetailScreen() {
 
   if (!flight) {
     return (
-      <Screen scroll={false}>
+      <Screen contentStyle={{ paddingHorizontal: spacing.xl }}>
         <BackHeader overline="Flight Tracker" title={ident || 'Flight'} />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md }}>
-          {q.isLoading ? (
-            <>
-              <ActivityIndicator color={palette.bright} />
-              <Text style={type.bodyDim}>Loading flight…</Text>
-            </>
-          ) : (
-            <>
-              <Ionicons name="airplane" size={48} color="rgba(59,158,240,0.4)" />
-              <Text style={[type.bodyDim, { textAlign: 'center', paddingHorizontal: spacing.xxl }]}>
-                {q.isError
-                  ? 'Something went wrong. Please try again.'
-                  : `No flight found for “${ident}” on ${date}.`}
-              </Text>
-            </>
-          )}
-        </View>
+        {q.isLoading ? (
+          // Skeleton mirrors the real detail layout (hero map → columns → row)
+          // rather than a bare centered spinner.
+          <View style={{ gap: spacing.lg }}>
+            <Skeleton height={200} radius={radii.card} />
+            <View style={{ flexDirection: 'row', gap: spacing.md }}>
+              <Skeleton height={96} radius={radii.card} style={{ flex: 1 }} />
+              <Skeleton height={96} radius={radii.card} style={{ flex: 1 }} />
+            </View>
+            <Skeleton height={64} radius={radii.card} />
+          </View>
+        ) : (
+          <View style={{ alignItems: 'center', justifyContent: 'center', paddingTop: 72, gap: spacing.md }}>
+            <Ionicons name="airplane" size={48} color="rgba(59,158,240,0.4)" />
+            <Text style={[type.bodyDim, { textAlign: 'center', paddingHorizontal: spacing.xxl }]}>
+              {q.isError
+                ? 'We couldn’t load this flight.'
+                : `No flight found for “${ident}” on ${date}.`}
+            </Text>
+            {q.isError ? (
+              <Button title="Try again" variant="secondary" size="md" onPress={() => q.refetch()} />
+            ) : null}
+          </View>
+        )}
       </Screen>
     );
   }

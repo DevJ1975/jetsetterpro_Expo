@@ -135,6 +135,13 @@ export const PressableScale: ComponentType<
   } & Record<string, unknown>
 >;
 
+export const Skeleton: ComponentType<{
+  width?: number | string;
+  height?: number;
+  radius?: number;
+  style?: StyleProp<ViewStyle>;
+}>;
+
 // ── Signature components (iOS UI/Components ports) ─────────────────────────
 
 export const SplitFlapText: ComponentType<{

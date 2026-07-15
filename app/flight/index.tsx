@@ -7,12 +7,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, Text, TextInput, View } from 'react-native';
 import {
   Badge,
   Button,
   Card,
   SectionLabel,
+  Skeleton,
   StatusDot,
   fonts,
   palette,
@@ -240,9 +241,8 @@ export default function FlightTrackerScreen() {
       ) : null}
 
       {isSearching ? (
-        <View style={{ alignItems: 'center', paddingVertical: spacing.xxl, gap: spacing.md }}>
-          <ActivityIndicator color={palette.bright} />
-          <Text style={type.bodyDim}>Searching flights…</Text>
+        <View style={{ gap: spacing.sm, paddingTop: spacing.sm }}>
+          <Skeleton height={96} radius={radii.card} />
         </View>
       ) : null}
 
@@ -250,8 +250,9 @@ export default function FlightTrackerScreen() {
         <View style={{ alignItems: 'center', paddingVertical: spacing.xxl, gap: spacing.md }}>
           <Ionicons name="warning" size={40} color={palette.warn} />
           <Text style={[type.bodyDim, { textAlign: 'center' }]}>
-            Something went wrong. Please try again.
+            We couldn’t reach flight data.
           </Text>
+          <Button title="Try again" variant="secondary" size="md" onPress={() => status.refetch()} />
         </View>
       ) : null}
 

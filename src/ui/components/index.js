@@ -7,6 +7,7 @@ export { default as ScreenHeader } from './ScreenHeader';
 export { default as Input } from './Input';
 export { default as ProgressBar } from './ProgressBar';
 export { default as PressableScale } from './PressableScale';
+export { default as Skeleton } from './Skeleton';
 export { default as SectionLabel } from './SectionLabel';
 export { default as SplitFlapText } from './SplitFlapText';
 export { default as AnimatedCounter, formatCounterValue } from './AnimatedCounter';
