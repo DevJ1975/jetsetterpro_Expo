@@ -1,129 +1,173 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import { Text, View } from 'react-native';
 import {
-  Badge,
+  AnimatedCounter,
   Button,
   Card,
-  ScreenHeader,
+  CardAppear,
   SectionLabel,
-  StatusDot,
+  palette,
   spacing,
   type,
 } from '@/src/ui';
 import { Screen } from '@/src/features/common/Screen';
-import { EmptyState } from '@/src/features/common/EmptyState';
+import { DestinationCard } from '@/src/features/home/DestinationCard';
+import { DisruptionBanner } from '@/src/features/home/DisruptionBanner';
+import { LeaveByStrip } from '@/src/features/home/LeaveByStrip';
+import { NextFlightCard } from '@/src/features/home/NextFlightCard';
+import { WeatherChip } from '@/src/features/home/WeatherChip';
 import { IrisSuggestionCard } from '@/src/features/iris/SuggestionCard';
-import { useWeather, cToF } from '@/src/core/api/weather';
-import { formatTime, relativeDayLabel, toISODate } from '@/src/core/format';
-import { formatByCurrency } from '@/src/core/expenses';
+import { useDisruptions } from '@/src/core/api/disruptions';
+import { formatMoney, toISODate } from '@/src/core/format';
+import { sumByCurrency } from '@/src/core/expenses';
 import { usePreferences } from '@/src/core/store/preferences';
 import { activeOrNextTrip, nextUpcomingFlight, useTravel } from '@/src/core/store/travel';
+import { useNow } from '@/src/core/useNow';
 
-function greetingForNow(): string {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 18) return 'Good afternoon';
-  return 'Good evening';
+// Home dashboard — section order mirrors iOS HomeView.swift body: header,
+// (disruption banner), IRIS suggestion, next-flight hero, leave-by strip,
+// destination card, today's spend — each blooming in with a stagger.
+
+const GAP = 24; // iOS VStack(spacing: 24)
+
+/** iOS HomeViewModel.greeting hour buckets. */
+function greetingFor(hour: number): string {
+  if (hour >= 5 && hour < 12) return 'Good morning';
+  if (hour >= 12 && hour < 17) return 'Good afternoon';
+  if (hour >= 17 && hour < 21) return 'Good evening';
+  return 'Good night';
 }
 
 export default function HomeScreen() {
   const router = useRouter();
   const name = usePreferences((s) => s.name);
+  const homeAirport = usePreferences((s) => s.homeAirport);
   const homeCurrency = usePreferences((s) => s.homeCurrency);
   const trips = useTravel((s) => s.trips);
   const expenses = useTravel((s) => s.expenses);
+  const disruptions = useDisruptions(5);
+  const now = useNow(60_000);
 
   const trip = useMemo(() => activeOrNextTrip(trips), [trips]);
   const flight = useMemo(() => nextUpcomingFlight(trips), [trips]);
-  const weather = useWeather(trip?.destination);
+  const destTrip = flight?.trip ?? trip;
 
-  const today = toISODate();
-  const todaySpendLabel = useMemo(
-    () => formatByCurrency(expenses.filter((e) => e.date === today), homeCurrency),
-    [expenses, today, homeCurrency],
+  // "TUESDAY, JUL 15" + time-of-day greeting, both off the minute tick.
+  const today = new Date(now);
+  const dateKicker = new Intl.DateTimeFormat(undefined, {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+  })
+    .format(today)
+    .toUpperCase();
+  const firstName = name.trim().split(/\s+/)[0] ?? '';
+  const greeting = `${greetingFor(today.getHours())}${firstName ? `, ${firstName}` : ''}`;
+
+  // Header chip: home-airport weather when set, else next destination.
+  const weatherCity = homeAirport.trim() || trip?.destination;
+
+  // Most recent unread disruption within the last 48h drives the banner.
+  const alert = useMemo(
+    () =>
+      disruptions.find(
+        (e) => !e.readAt && now - Date.parse(e.createdAt) < 48 * 3_600_000,
+      ),
+    [disruptions, now],
   );
 
-  // An in-progress multi-day trip should read "Now", not a past start-date label.
-  const tripTiming = trip
-    ? trip.startDate <= today && trip.endDate >= today
-      ? 'Now'
-      : relativeDayLabel(trip.startDate)
-    : null;
-  const overline = trip ? `${trip.destination} · ${tripTiming}` : 'No active trip';
+  // Today's spend, totaled per currency (never summed across currencies).
+  const todayISO = toISODate(today);
+  const todayTotals = useMemo(
+    () => sumByCurrency(expenses.filter((e) => e.date === todayISO)),
+    [expenses, todayISO],
+  );
+  const primarySpend = todayTotals[0] ?? { currency: homeCurrency, total: 0 };
+  const extraSpend = todayTotals
+    .slice(1)
+    .map((t) => formatMoney(t.total, t.currency))
+    .join(' · ');
 
   return (
     <Screen contentStyle={{ paddingHorizontal: spacing.xl }}>
-      <ScreenHeader
-        overline={overline}
-        title={`${greetingForNow()}${name ? `, ${name}` : ''}`}
-        style={{ paddingHorizontal: 0 }}
-      />
+      {/* ── Header: date kicker + greeting | weather mini-card ── */}
+      <CardAppear delay={0} style={{ marginBottom: GAP }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingTop: spacing.md }}>
+          <View style={{ flex: 1, paddingRight: spacing.md }}>
+            <Text style={[type.overline, { color: palette.bright, marginBottom: 6 }]}>
+              {dateKicker}
+            </Text>
+            <Text style={[type.display, { fontSize: 30, lineHeight: 37 }]} numberOfLines={2}>
+              {greeting}
+            </Text>
+            {homeAirport.trim() ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}>
+                <Ionicons name="location" size={10} color="rgba(91,186,255,0.8)" />
+                <Text style={type.caption}>{homeAirport.trim().toUpperCase()}</Text>
+              </View>
+            ) : null}
+          </View>
+          <WeatherChip city={weatherCity} />
+        </View>
+      </CardAppear>
 
-      <IrisSuggestionCard />
-
-      {!trip && !flight ? (
-        <Card variant="glass">
-          <EmptyState
-            icon="airplane"
-            title="No trips yet"
-            subtitle="Add your first trip to see flights, weather, and spend at a glance."
-            actionLabel="Add a trip"
-            onAction={() => router.push('/add-trip')}
-          />
-        </Card>
+      {/* ── Disruption banner (unread recent event only) ── */}
+      {alert ? (
+        <CardAppear delay={0.06} style={{ marginBottom: GAP }}>
+          <DisruptionBanner event={alert} />
+        </CardAppear>
       ) : null}
 
+      {/* ── IRIS proactive suggestion (self-hides; carries its own margin) ── */}
+      <CardAppear delay={0.12}>
+        <IrisSuggestionCard />
+      </CardAppear>
+
+      {/* ── Next-flight hero ── */}
+      <CardAppear delay={0.18} style={{ marginBottom: GAP }}>
+        <NextFlightCard flight={flight} />
+      </CardAppear>
+
+      {/* ── Leave-by strip ── */}
       {flight ? (
-        <Card variant="glass" style={{ gap: spacing.md }}>
-          <SectionLabel>Next flight</SectionLabel>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-            <StatusDot tone="good" />
-            <Text style={[type.sub, { flex: 1 }]}>{flight.item.title}</Text>
-            <Badge tone="good" label="On time" />
-          </View>
-          <Text style={type.bodyDim}>
-            Departs {relativeDayLabel(flight.item.startDate).toLowerCase()} at {formatTime(flight.item.startDate)}
-            {flight.item.location ? ` · ${flight.item.location}` : ''}
-          </Text>
-          <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs }}>
-            <Button title="View itinerary" size="md" onPress={() => router.push('/itinerary')} />
+        <CardAppear delay={0.24} style={{ marginBottom: GAP }}>
+          <LeaveByStrip flight={flight} />
+        </CardAppear>
+      ) : null}
+
+      {/* ── Destination local time + weather ── */}
+      {destTrip ? (
+        <CardAppear delay={0.3} style={{ marginBottom: GAP }}>
+          <DestinationCard trip={destTrip} flightItem={flight?.item} />
+        </CardAppear>
+      ) : null}
+
+      {/* ── Today's spend ── */}
+      <CardAppear delay={0.36}>
+        <Card>
+          <SectionLabel>Today</SectionLabel>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ flex: 1 }}>
+              <AnimatedCounter
+                target={primarySpend.total}
+                format={{ currency: primarySpend.currency }}
+                style={type.stat}
+              />
+              <Text style={[type.caption, { marginTop: 2 }]}>
+                {extraSpend ? `Spent today · ${extraSpend}` : 'Spent today'}
+              </Text>
+            </View>
             <Button
-              title="Track"
+              title="Add expense"
               variant="secondary"
-              size="md"
-              onPress={() => router.push('/itinerary')}
+              size="sm"
+              onPress={() => router.push('/add-expense')}
             />
           </View>
         </Card>
-      ) : null}
-
-      {trip ? (
-        <Card style={{ marginTop: spacing.lg }}>
-          <SectionLabel>At {trip.destination}</SectionLabel>
-          {weather.data ? (
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: spacing.md }}>
-              <Text style={type.stat}>
-                {cToF(weather.data.tempC)}°F
-              </Text>
-              <Text style={type.bodyDim}>{weather.data.description}</Text>
-            </View>
-          ) : (
-            <Text style={type.bodyDim}>{weather.isLoading ? 'Loading weather…' : 'Weather unavailable'}</Text>
-          )}
-        </Card>
-      ) : null}
-
-      <Card style={{ marginTop: spacing.lg }}>
-        <SectionLabel>Today</SectionLabel>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={{ flex: 1 }}>
-            <Text style={type.stat}>{todaySpendLabel}</Text>
-            <Text style={[type.caption, { marginTop: 2 }]}>Spent today</Text>
-          </View>
-          <Button title="Add expense" variant="secondary" size="sm" onPress={() => router.push('/add-expense')} />
-        </View>
-      </Card>
+      </CardAppear>
     </Screen>
   );
 }
