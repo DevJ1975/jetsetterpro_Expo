@@ -1,7 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useMemo } from 'react';
-import { DimensionValue, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo } from 'react';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { Badge, Card, StatusDot, palette, radii, spacing, type } from '@/src/ui';
 import { statusLabel, statusTone, useFlightStatus } from '@/src/core/api/flights';
 import { extractFlightNumber } from '@/src/core/ai/iris/triggers';
@@ -9,6 +17,7 @@ import { parseRoute } from '@/src/core/flightPhase';
 import { formatDate, formatTime } from '@/src/core/format';
 import { useCheckIn } from '@/src/core/store/checkin';
 import { useNow } from '@/src/core/useNow';
+import { useReduceMotion } from '@/src/core/useReduceMotion';
 import type { ItineraryItem, Trip } from '@/src/types/models';
 
 // The Home hero — a faithful port of iOS HomeView.nextFlightCard: overline
@@ -230,20 +239,44 @@ export function NextFlightCard({ flight }: { flight?: { trip: Trip; item: Itiner
 }
 
 /** Slim stylized route visual — line with the plane positioned by progress
- *  (stands in for the iOS compact FlightMapView). */
+ *  (stands in for the iOS compact FlightMapView). The plane springs to the
+ *  live progress and breathes a subtle glow so the hero feels alive between
+ *  the 60s ticks. Snaps + still under Reduce Motion. */
 function RouteStrip({ progress }: { progress: number }) {
-  const pct = Math.min(100, Math.max(0, progress * 100));
-  const left = `${pct}%` as DimensionValue;
-  const filled = `${pct}%` as DimensionValue;
+  const reduce = useReduceMotion();
+  const target = Math.min(1, Math.max(0, progress));
+  const p = useSharedValue(target);
+  const pulse = useSharedValue(0);
+
+  useEffect(() => {
+    p.value = reduce ? target : withSpring(target, { damping: 20, stiffness: 90 });
+  }, [target, reduce, p]);
+
+  useEffect(() => {
+    if (reduce) return;
+    pulse.value = withRepeat(
+      withTiming(1, { duration: 1600, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true,
+    );
+  }, [reduce, pulse]);
+
+  const fillStyle = useAnimatedStyle(() => ({ width: `${p.value * 100}%` }));
+  const planeStyle = useAnimatedStyle(() => ({
+    left: `${p.value * 100}%`,
+    transform: [{ scale: 1 + pulse.value * 0.12 }],
+    shadowOpacity: 0.4 + pulse.value * 0.4,
+  }));
+
   return (
     <View style={styles.strip}>
       <View style={styles.stripTrack} />
-      <View style={[styles.stripFill, { width: filled }]} />
+      <Animated.View style={[styles.stripFill, fillStyle]} />
       <View style={[styles.stripDot, { left: 0, backgroundColor: palette.bright }]} />
       <View style={[styles.stripDot, { right: 0, backgroundColor: palette.good }]} />
-      <View style={[styles.stripPlane, { left }]}>
+      <Animated.View style={[styles.stripPlane, planeStyle]}>
         <Ionicons name="airplane" size={12} color="#FFFFFF" />
-      </View>
+      </Animated.View>
     </View>
   );
 }
