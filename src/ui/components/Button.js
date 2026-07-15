@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, Text, StyleSheet, View } from 'react-native';
 import { palette, radii, shadows } from '../theme';
+import { haptics } from '@/src/core/haptics';
 
 /**
  * Variants: 'primary' | 'secondary' | 'ghost' | 'danger'
@@ -13,7 +14,13 @@ export default function Button({ title, onPress, variant = 'primary', size = 'md
   return (
     <Pressable
       onPress={onPress}
+      onPressIn={() => {
+        if (!disabled) haptics.impact(variant === 'danger' ? 'medium' : 'light');
+      }}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityState={{ disabled: !!disabled }}
       style={({ pressed }) => [
         styles.base, v, s.box,
         variant === 'primary' && shadows.glowAccent,

@@ -4,6 +4,7 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform, StyleSheet } from 'react-native';
 import { palette } from '@/src/ui';
+import { haptics } from '@/src/core/haptics';
 
 const TAB_ICON: Record<string, string> = {
   index: 'home',
@@ -19,6 +20,7 @@ const TAB_ICON: Record<string, string> = {
 export default function TabLayout() {
   return (
     <Tabs
+      screenListeners={{ tabPress: () => haptics.selection() }}
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: palette.accent,

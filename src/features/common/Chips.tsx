@@ -1,6 +1,6 @@
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
-import { palette, radii, spacing } from '@/src/ui';
+import { Text, View } from 'react-native';
+import { PressableScale, palette, radii, spacing } from '@/src/ui';
 
 export function Chips<T extends string>({
   options,
@@ -18,9 +18,12 @@ export function Chips<T extends string>({
       {options.map((o) => {
         const active = o === value;
         return (
-          <Pressable
+          <PressableScale
             key={o}
             onPress={() => onChange(o)}
+            haptic="selection"
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
             style={{
               paddingHorizontal: 14,
               paddingVertical: 8,
@@ -33,7 +36,7 @@ export function Chips<T extends string>({
             <Text style={{ color: active ? palette.bright : palette.dim, fontWeight: '600', fontSize: 13 }}>
               {labelOf ? labelOf(o) : o}
             </Text>
-          </Pressable>
+          </PressableScale>
         );
       })}
     </View>

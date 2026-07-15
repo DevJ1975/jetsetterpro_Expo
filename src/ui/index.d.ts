@@ -122,6 +122,19 @@ export const ProgressBar: ComponentType<{
 
 export const SectionLabel: ComponentType<{ children: ReactNode; style?: StyleProp<ViewStyle> }>;
 
+export type HapticKind =
+  | 'light' | 'medium' | 'heavy' | 'soft' | 'rigid'
+  | 'selection' | 'success' | 'warning' | 'error';
+export const PressableScale: ComponentType<
+  {
+    children?: ReactNode;
+    style?: StyleProp<ViewStyle>;
+    scaleTo?: number;
+    dimTo?: number;
+    haptic?: HapticKind;
+  } & Record<string, unknown>
+>;
+
 // ── Signature components (iOS UI/Components ports) ─────────────────────────
 
 export const SplitFlapText: ComponentType<{
