@@ -47,6 +47,7 @@ describe('AnimatedCounter formatting', () => {
   });
   it('formats decimals and currency', () => {
     expect(formatCounterValue(12.3456, { decimal: 2 })).toBe('12.35');
-    expect(formatCounterValue(6715, { currency: 'USD' })).toBe('USD 6715.00');
+    // Currency now routes through Intl (symbol + grouping) instead of "USD 6715.00".
+    expect(formatCounterValue(6715, { currency: 'USD' })).toBe('$6,715.00');
   });
 });

@@ -44,6 +44,7 @@ export const gradients: Record<
 
 export const fonts: {
   rounded: Record<'regular' | 'medium' | 'semibold' | 'bold' | 'extrabold', string>;
+  mono: string;
 };
 export const fontAssets: Record<string, number>;
 

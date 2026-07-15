@@ -23,7 +23,7 @@ export const palette = {
   // Text
   text: '#ECEEF4',        // primary on dark
   dim: '#8B92A8',         // secondary
-  faint: '#5A6276',       // tertiary/captions
+  faint: '#7B8496',       // tertiary/captions — WCAG-AA on ink (5.35:1) & surface (4.84:1)
 
   // Semantic (iOS executive dark)
   good: '#1DB97D',

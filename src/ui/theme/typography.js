@@ -10,8 +10,9 @@ import { palette } from './colors';
 import { fonts } from './fonts';
 
 export const type = {
-  // iOS heroTitle: .largeTitle rounded bold
-  display: { fontFamily: fonts.rounded.extrabold, fontSize: 34, letterSpacing: -0.8, color: palette.text, lineHeight: 42 },
+  // iOS heroTitle: .largeTitle rounded bold. Tabular figures so big numbers
+  // (counters, prices) don't reflow as glyph widths change.
+  display: { fontFamily: fonts.rounded.extrabold, fontSize: 34, letterSpacing: -0.8, color: palette.text, lineHeight: 42, fontVariant: ['tabular-nums'] },
   // iOS displayTitle: .title rounded bold
   title:   { fontFamily: fonts.rounded.bold, fontSize: 28, letterSpacing: -0.5, color: palette.text, lineHeight: 36 },
   // iOS pageTitle: .title2 rounded bold
@@ -22,9 +23,10 @@ export const type = {
   bodyDim: { fontSize: 15, fontWeight: '400', color: palette.dim, lineHeight: 21 },
   caption: { fontSize: 13, fontWeight: '400', color: palette.dim, lineHeight: 18 },
   // Overline/kicker — iOS label: .caption rounded semibold, uppercase
-  overline:{ fontFamily: fonts.rounded.bold, fontSize: 11, letterSpacing: 1.6, color: palette.dim, textTransform: 'uppercase' },
-  // iOS metric: .largeTitle rounded bold — big animated numbers, stat tiles
-  stat:    { fontFamily: fonts.rounded.extrabold, fontSize: 24, letterSpacing: -0.4, color: palette.text },
+  overline:{ fontFamily: fonts.rounded.bold, fontSize: 11, letterSpacing: 1.6, lineHeight: 14, color: palette.dim, textTransform: 'uppercase' },
+  // iOS metric: .largeTitle rounded bold — big animated numbers, stat tiles.
+  // Tabular figures for jitter-free count-ups.
+  stat:    { fontFamily: fonts.rounded.extrabold, fontSize: 24, letterSpacing: -0.4, lineHeight: 28, color: palette.text, fontVariant: ['tabular-nums'] },
 };
 
 export default type;

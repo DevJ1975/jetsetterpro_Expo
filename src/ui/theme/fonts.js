@@ -19,6 +19,9 @@ export const fonts = {
     bold: family('Nunito-Bold', 'Nunito_700Bold'),
     extrabold: family('Nunito-ExtraBold', 'Nunito_800ExtraBold'),
   },
+  // Monospaced face for flight idents, boarding-pass fields, times, and
+  // countdowns — tokenized so screens stop re-deriving Platform.select per file.
+  mono: family('Menlo', 'monospace'),
 };
 
 // Runtime registration map for expo-font's useFonts — keyed by the SAME
