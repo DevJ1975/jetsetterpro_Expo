@@ -1,7 +1,7 @@
 # Release guide — TestFlight + Google Play closed testing
 
-Ship the beta to both stores with EAS. The app targets **Expo SDK 56**
-(RN 0.85, New Architecture) with a dev-client + CNG (`ios/`, `android/` are
+Ship the beta to both stores with EAS. The app targets **Expo SDK 57**
+(RN 0.86, New Architecture) with a dev-client + CNG (`ios/`, `android/` are
 generated, git-ignored). Pro is unlocked for all beta testers
 (`src/core/store/subscription.ts`), so no store IAP products are required.
 
@@ -120,13 +120,15 @@ outside the repo (or a git-ignored path).
 
 ## 5. Store-deadline notes (as of 2026-07)
 
-- **Android targetSdk:** SDK 56 prebuilds at target/compile API **35** —
-  compliant for Play today. Any **update after Aug 31, 2026** must target API
-  **36**: add `expo-build-properties` (~56.0.22) with
+- **Android targetSdk:** SDK 57 (RN 0.86) prebuilds target Android 15 (API
+  **35**) by default — compliant for Play today, and 0.86 improves edge-to-edge
+  handling on API 35+. Confirm the level in the prebuild/build output. Any
+  **update after Aug 31, 2026** must target API **36**: add
+  `expo-build-properties` (~57.0.5) with
   `{ "android": { "compileSdkVersion": 36, "targetSdkVersion": 36 } }`, rebuild,
   and retest. (Closed testing itself is fine now.)
 - **iOS:** App Store Connect uploads require the Xcode 26 / iOS 26 SDK — EAS
-  default build images comply by construction on SDK 56.
+  default build images comply by construction on SDK 57.
 - **Exact alarms:** the "remind me to leave" notification uses inexact Android
   scheduling by design (exact-alarm permission is policy-restricted to
   alarm/clock apps), so reminders may fire a few minutes early/late.
