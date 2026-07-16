@@ -10,13 +10,17 @@ import {
   Card,
   CardAppear,
   SectionLabel,
+  SuccessAnimation,
   palette,
   spacing,
   type,
 } from '@/src/ui';
+import { useReduceMotion } from '@/src/core/useReduceMotion';
+import { occasionFor } from '@/src/features/home/occasions';
 import { Screen } from '@/src/features/common/Screen';
 import { DestinationCard } from '@/src/features/home/DestinationCard';
 import { DisruptionBanner } from '@/src/features/home/DisruptionBanner';
+import { FlightAlertMarquee } from '@/src/features/home/FlightAlertMarquee';
 import { LeaveByStrip } from '@/src/features/home/LeaveByStrip';
 import { NextFlightCard } from '@/src/features/home/NextFlightCard';
 import { WeatherChip } from '@/src/features/home/WeatherChip';
@@ -47,6 +51,11 @@ export default function HomeScreen() {
   const name = usePreferences((s) => s.name);
   const homeAirport = usePreferences((s) => s.homeAirport);
   const homeCurrency = usePreferences((s) => s.homeCurrency);
+  const birthday = usePreferences((s) => s.birthday);
+  const lastCelebratedOn = usePreferences((s) => s.lastCelebratedOn);
+  const markCelebrated = usePreferences((s) => s.markCelebrated);
+  const reduce = useReduceMotion();
+  const [dismissedCelebration, setDismissedCelebration] = useState(false);
   const trips = useTravel((s) => s.trips);
   const expenses = useTravel((s) => s.expenses);
   const disruptions = useDisruptions(5);
@@ -80,7 +89,19 @@ export default function HomeScreen() {
     .format(today)
     .toUpperCase();
   const firstName = name.trim().split(/\s+/)[0] ?? '';
-  const greeting = `${greetingFor(today.getHours())}${firstName ? `, ${firstName}` : ''}`;
+
+  // Celebrate the traveler's birthday or a holiday: a festive greeting, plus a
+  // one-per-day confetti burst (reduce-motion gated).
+  const occasion = occasionFor(today, birthday); // cheap; no memo needed
+  const greeting = occasion
+    ? `${occasion.greeting}${firstName ? `, ${firstName}` : ''} ${occasion.emoji}`
+    : `${greetingFor(today.getHours())}${firstName ? `, ${firstName}` : ''}`;
+
+  // Show the once-a-day confetti when today is an occasion and it hasn't been
+  // celebrated yet — derived (no effect); dismissing marks it in the store.
+  const todayKey = toISODate(today);
+  const showCelebration =
+    !!occasion && !reduce && lastCelebratedOn !== todayKey && !dismissedCelebration;
 
   // Header chip: home-airport weather when set, else next destination.
   const weatherCity = homeAirport.trim() || trip?.destination;
@@ -91,6 +112,12 @@ export default function HomeScreen() {
       disruptions.find(
         (e) => !e.readAt && now - Date.parse(e.createdAt) < 48 * 3_600_000,
       ),
+    [disruptions, now],
+  );
+
+  // Live flight-change alerts (last 48h) feed the scrolling ticker at the top.
+  const flightAlerts = useMemo(
+    () => disruptions.filter((e) => now - Date.parse(e.createdAt) < 48 * 3_600_000),
     [disruptions, now],
   );
 
@@ -108,6 +135,24 @@ export default function HomeScreen() {
 
   return (
     <Screen contentStyle={{ paddingHorizontal: spacing.xl }} onRefresh={onRefresh} refreshing={refreshing}>
+      {showCelebration && occasion ? (
+        <SuccessAnimation
+          title={`${occasion.greeting}${firstName ? `, ${firstName}` : ''}! ${occasion.emoji}`}
+          subtitle={occasion.key === 'birthday' ? 'Wishing you safe and wonderful travels.' : 'From all of us at JetSetter Pro.'}
+          onDismiss={() => {
+            markCelebrated(todayKey);
+            setDismissedCelebration(true);
+          }}
+        />
+      ) : null}
+
+      {/* ── Live flight-change ticker (yellow: gate/delay, red: cancel) ── */}
+      {flightAlerts.length > 0 ? (
+        <View style={{ marginBottom: spacing.md }}>
+          <FlightAlertMarquee events={flightAlerts} />
+        </View>
+      ) : null}
+
       {/* ── Header: date kicker + greeting | weather mini-card ── */}
       <CardAppear delay={0} style={{ marginBottom: GAP }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingTop: spacing.md }}>

@@ -55,6 +55,7 @@ export default function SettingsScreen() {
     name,
     homeAirport,
     homeCurrency,
+    birthday,
     setProfile,
     reset,
     distanceUnit,
@@ -217,6 +218,14 @@ export default function SettingsScreen() {
       <Section label="Travel">
         <View style={{ gap: spacing.lg }}>
           <Input label="Name" value={name} onChangeText={(t: string) => setProfile({ name: t })} autoCapitalize="words" />
+          <Input
+            label="Birthday (MM-DD)"
+            placeholder="07-04"
+            value={birthday}
+            onChangeText={(t: string) => setProfile({ birthday: t.trim() })}
+            autoCapitalize="none"
+            maxLength={10}
+          />
           <View style={{ flexDirection: 'row', gap: spacing.md }}>
             <Input
               label="Home airport"

@@ -28,6 +28,11 @@ interface PreferencesState {
   name: string;
   homeAirport: string;
   homeCurrency: string;
+  /** Traveler birthday ("MM-DD" or "YYYY-MM-DD") — powers the home celebration. */
+  birthday: string;
+  /** ISO date the last home occasion (birthday/holiday) was celebrated — so the
+   *  confetti fires at most once per day. */
+  lastCelebratedOn: string;
   appearance: Appearance;
   hasCompletedOnboarding: boolean;
   distanceUnit: DistanceUnit;
@@ -39,8 +44,11 @@ interface PreferencesState {
   hasSeenIrisLearningPrompt: boolean;
   _hasHydrated: boolean;
   setProfile: (
-    p: Partial<Pick<PreferencesState, 'name' | 'homeAirport' | 'homeCurrency' | 'appearance'>>,
+    p: Partial<
+      Pick<PreferencesState, 'name' | 'homeAirport' | 'homeCurrency' | 'appearance' | 'birthday'>
+    >,
   ) => void;
+  markCelebrated: (isoDate: string) => void;
   setDistanceUnit: (unit: DistanceUnit) => void;
   setNotification: (key: NotificationPrefKey, on: boolean) => void;
   setIrisLearning: (patch: Partial<IrisLearningPrefs>) => void;
@@ -55,6 +63,8 @@ export const usePreferences = create<PreferencesState>()(
       name: '',
       homeAirport: '',
       homeCurrency: 'USD',
+      birthday: '',
+      lastCelebratedOn: '',
       appearance: 'dark',
       hasCompletedOnboarding: false,
       distanceUnit: 'mi',
@@ -65,6 +75,7 @@ export const usePreferences = create<PreferencesState>()(
       hasSeenIrisLearningPrompt: false,
       _hasHydrated: false,
       setProfile: (p) => set(p),
+      markCelebrated: (isoDate) => set({ lastCelebratedOn: isoDate }),
       setDistanceUnit: (unit) => set({ distanceUnit: unit }),
       setNotification: (key, on) => set({ [key]: on } as Partial<PreferencesState>),
       setIrisLearning: (patch) =>
@@ -76,6 +87,8 @@ export const usePreferences = create<PreferencesState>()(
           name: '',
           homeAirport: '',
           homeCurrency: 'USD',
+          birthday: '',
+          lastCelebratedOn: '',
           appearance: 'dark',
           hasCompletedOnboarding: false,
           distanceUnit: 'mi',
@@ -93,6 +106,8 @@ export const usePreferences = create<PreferencesState>()(
         name: s.name,
         homeAirport: s.homeAirport,
         homeCurrency: s.homeCurrency,
+        birthday: s.birthday,
+        lastCelebratedOn: s.lastCelebratedOn,
         appearance: s.appearance,
         hasCompletedOnboarding: s.hasCompletedOnboarding,
         distanceUnit: s.distanceUnit,
