@@ -7,13 +7,13 @@ import { Button, Card, palette, radii, spacing, type } from '@/src/ui';
 import { Screen } from '@/src/features/common/Screen';
 import { BackHeader } from '@/src/features/common/BackHeader';
 import { ParkingCone } from '@/src/features/parking/ParkingCone';
+import { formatDate } from '@/src/core/format';
 import { useParking } from '@/src/core/store/parking';
 
-/** Human "Saved …" label from a stored ISO timestamp. Pure (deterministic from
- *  the stored value) — unlike `new Date()`, which must stay out of render. */
+/** Human "Saved …" label from a stored ISO timestamp — routed through the repo's
+ *  Intl-guarded formatter (returns the raw string if Intl throws on Hermes). */
 function savedLabel(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+  return formatDate(iso, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
 }
 
 export default function ParkingScreen() {
@@ -24,13 +24,16 @@ export default function ParkingScreen() {
   const openDirections = () => {
     if (!spot?.coords) return;
     const { latitude, longitude } = spot.coords;
-    const label = encodeURIComponent(spot.address || 'My parking spot');
+    // Walking turn-by-turn to the exact pin. No text query — an address string
+    // can make Maps re-search and move the pin off the saved coordinates.
     const url =
       Platform.OS === 'ios'
-        ? `maps://?q=${label}&ll=${latitude},${longitude}`
-        : `geo:${latitude},${longitude}?q=${latitude},${longitude}(${label})`;
+        ? `maps://?daddr=${latitude},${longitude}&dirflg=w`
+        : `google.navigation:q=${latitude},${longitude}&mode=w`;
     Linking.openURL(url).catch(() => {
-      Linking.openURL(`https://maps.google.com/?q=${latitude},${longitude}`).catch(() => {});
+      Linking.openURL(
+        `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}&travelmode=walking`,
+      ).catch(() => {});
     });
   };
 

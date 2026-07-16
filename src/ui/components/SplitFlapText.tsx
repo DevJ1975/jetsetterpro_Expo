@@ -85,13 +85,19 @@ const FlapCell = memo(function FlapCell({
   const [displayed, setDisplayed] = useState(' ');
   // Mirrors the rendered char so a new target re-spins from where it stopped.
   const displayedRef = useRef(' ');
-  // The spin sequence (resting char → target) lives in a shared value so the
-  // reaction worklet can index it on the UI thread; `t` is 0→1 spin progress.
-  const seq = useSharedValue<string[]>([]);
+  // The spin sequence stays on the JS thread (a ref); the worklets read only
+  // numbers — `t` (0→1 progress), `seqLen`, and `spin` (a per-spin generation
+  // that forces the reaction to re-fire when a new target starts even if the
+  // end index is unchanged — e.g. equal-distance re-targets under Reduce Motion).
+  const seqRef = useRef<string[]>([]);
+  const seqLen = useSharedValue(0);
+  const spin = useSharedValue(0);
   const t = useSharedValue(0);
 
-  // Commit a spun character on the JS thread (updates ref + visible state).
-  const commit = (ch: string) => {
+  // Commit the spun character at index `i` on the JS thread.
+  const commit = (i: number) => {
+    const ch = seqRef.current[i];
+    if (ch == null) return;
     displayedRef.current = ch;
     setDisplayed(ch);
   };
@@ -107,7 +113,9 @@ const FlapCell = memo(function FlapCell({
       chars.push(c);
     }
     if (chars.length === 0) return;
-    seq.value = chars;
+    seqRef.current = chars;
+    seqLen.value = chars.length;
+    spin.value += 1; // new spin — makes the reaction re-fire on every re-target
     if (reduce) {
       // Snap: jump progress to the end so the reaction commits the target on
       // the next frame with no visible spin (avoids synchronous setState here).
@@ -123,17 +131,21 @@ const FlapCell = memo(function FlapCell({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target, delayMs, stepMs, reduce]);
 
-  // Advance the visible character from spin progress on the UI-thread clock.
+  // Advance the visible character from spin progress on the UI-thread clock. The
+  // prepared value packs the spin generation with the clamped index (index is
+  // always < 1000 — bounded by the flap alphabet), so a new spin never collides
+  // with the last committed value even when the end index is identical.
   useAnimatedReaction(
     () => {
-      const n = seq.value.length;
+      const n = seqLen.value;
       if (n === 0) return -1;
-      const i = Math.floor(t.value * n);
-      return i < 0 ? 0 : i > n - 1 ? n - 1 : i;
+      const raw = Math.floor(t.value * n);
+      const i = raw < 0 ? 0 : raw > n - 1 ? n - 1 : raw;
+      return spin.value * 1000 + i;
     },
     (curr, prev) => {
       if (curr >= 0 && curr !== prev) {
-        runOnJS(commit)(seq.value[curr]);
+        runOnJS(commit)(curr % 1000);
       }
     },
     [],
@@ -141,7 +153,7 @@ const FlapCell = memo(function FlapCell({
 
   // Subtle mechanical "flap": the cell squashes vertically between characters.
   const flapStyle = useAnimatedStyle(() => {
-    const n = seq.value.length;
+    const n = seqLen.value;
     if (n === 0) return { transform: [{ scaleY: 1 }] };
     const frac = (t.value * n) % 1;
     return { transform: [{ scaleY: 1 - 0.16 * Math.sin(frac * Math.PI) }] };

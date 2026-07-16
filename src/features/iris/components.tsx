@@ -109,13 +109,16 @@ export function ThinkingDots() {
     }
     vals.forEach((d, i) => {
       d.value = 0.4;
-      d.value = withRepeat(
-        withSequence(
-          withDelay(i * 160, withTiming(1, { duration: 400 })),
-          withTiming(0.4, { duration: 400 }),
+      // Phase offset OUTSIDE the repeat so all three dots share one 800ms
+      // period — a delay INSIDE withRepeat makes each period i*160+800 and they
+      // drift out of sync after the first cycle.
+      d.value = withDelay(
+        i * 160,
+        withRepeat(
+          withSequence(withTiming(1, { duration: 400 }), withTiming(0.4, { duration: 400 })),
+          -1,
+          false,
         ),
-        -1,
-        false,
       );
     });
   }, [reduce, d0, d1, d2]);

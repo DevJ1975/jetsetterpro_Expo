@@ -84,7 +84,8 @@ export default function AddParkingScreen() {
       photoUri,
       coords,
       address,
-      createdAt: new Date().toISOString(),
+      // Preserve the original save time when editing an existing spot.
+      createdAt: existing?.createdAt ?? new Date().toISOString(),
     });
     router.back();
   };

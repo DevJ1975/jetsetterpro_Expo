@@ -45,9 +45,11 @@ export default function StatusDot({ tone = 'good', size = 8, pulse = true }) {
     <View
       style={{ width: size * 2.5, height: size * 2.5, alignItems: 'center', justifyContent: 'center' }}
     >
-      <Animated.View
-        style={[StyleSheet.absoluteFill, { borderRadius: 999, backgroundColor: color }, haloStyle]}
-      />
+      {active ? (
+        <Animated.View
+          style={[StyleSheet.absoluteFill, { borderRadius: 999, backgroundColor: color }, haloStyle]}
+        />
+      ) : null}
       <View style={{ width: size, height: size, borderRadius: 999, backgroundColor: color }} />
     </View>
   );
