@@ -7,8 +7,18 @@
 // via useFlightStatuses.
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Animated, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  Easing,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import { SplitFlapText, fonts, spacing } from '@/src/ui';
+import { useReduceMotion } from '@/src/core/useReduceMotion';
 import { BackHeader } from '@/src/features/common/BackHeader';
 import { Screen } from '@/src/features/common/Screen';
 import { isBackendConfigured } from '@/src/core/api/backend';
@@ -59,29 +69,28 @@ function BoardClock() {
 
 /** Yellow pulsing dot for the SAMPLE badge (StatusDot is tone-locked). */
 function PulseDot({ color, size = 7 }: { color: string; size?: number }) {
-  const [a] = useState(() => new Animated.Value(0));
+  const reduce = useReduceMotion();
+  const progress = useSharedValue(0);
   useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(a, { toValue: 1, duration: 800, useNativeDriver: true }),
-        Animated.timing(a, { toValue: 0, duration: 800, useNativeDriver: true }),
-      ]),
+    if (reduce) {
+      progress.value = 0;
+      return;
+    }
+    progress.value = 0;
+    progress.value = withRepeat(
+      withTiming(1, { duration: 800, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true,
     );
-    loop.start();
-    return () => loop.stop();
-  }, [a]);
+  }, [reduce, progress]);
+  const haloStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0, 1], [0.35, 0]),
+    transform: [{ scale: interpolate(progress.value, [0, 1], [0.6, 1.4]) }],
+  }));
   return (
     <View style={{ width: size * 2, height: size * 2, alignItems: 'center', justifyContent: 'center' }}>
       <Animated.View
-        style={[
-          StyleSheet.absoluteFill,
-          {
-            borderRadius: 999,
-            backgroundColor: color,
-            opacity: a.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0] }),
-            transform: [{ scale: a.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1.4] }) }],
-          },
-        ]}
+        style={[StyleSheet.absoluteFill, { borderRadius: 999, backgroundColor: color }, haloStyle]}
       />
       <View style={{ width: size, height: size, borderRadius: 999, backgroundColor: color }} />
     </View>
@@ -90,22 +99,21 @@ function PulseDot({ color, size = 7 }: { color: string; size?: number }) {
 
 /** Blinks its children — FINAL CALL rows flash like a real Solari board. */
 function Blink({ active, children }: { active: boolean; children: React.ReactNode }) {
-  const [a] = useState(() => new Animated.Value(1));
+  const reduce = useReduceMotion();
+  const opacity = useSharedValue(1);
   useEffect(() => {
-    if (!active) {
-      a.setValue(1);
+    if (!active || reduce) {
+      opacity.value = 1;
       return;
     }
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(a, { toValue: 0.25, duration: 600, useNativeDriver: true }),
-        Animated.timing(a, { toValue: 1, duration: 600, useNativeDriver: true }),
-      ]),
+    opacity.value = withRepeat(
+      withSequence(withTiming(0.25, { duration: 600 }), withTiming(1, { duration: 600 })),
+      -1,
+      false,
     );
-    loop.start();
-    return () => loop.stop();
-  }, [active, a]);
-  return <Animated.View style={{ opacity: a, flex: 1 }}>{children}</Animated.View>;
+  }, [active, reduce, opacity]);
+  const blinkStyle = useAnimatedStyle(() => ({ opacity: opacity.value, flex: 1 }));
+  return <Animated.View style={blinkStyle}>{children}</Animated.View>;
 }
 
 function ColumnTitle({ text, width }: { text: string; width?: number }) {

@@ -1,8 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Animated, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import { palette, radii, spacing, type } from '@/src/ui';
+import { useReduceMotion } from '@/src/core/useReduceMotion';
 import { useIris } from '@/src/core/store/iris';
 import { PendingKind, useIrisRouter } from '@/src/core/store/irisRouter';
 
@@ -84,32 +93,45 @@ export function MessageBubble({ role, text }: { role: 'user' | 'assistant'; text
 }
 
 export function ThinkingDots() {
-  // Stable Animated.Values held in state (not refs) so they can be read in render.
-  const [dots] = useState(() => [
-    new Animated.Value(0.4),
-    new Animated.Value(0.4),
-    new Animated.Value(0.4),
-  ]);
+  const reduce = useReduceMotion();
+  // One shared value per dot; staggered opacity pulse (snaps to static under RM).
+  const d0 = useSharedValue(0.4);
+  const d1 = useSharedValue(0.4);
+  const d2 = useSharedValue(0.4);
+
   useEffect(() => {
-    const loops = dots.map((a, i) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(i * 200),
-          Animated.timing(a, { toValue: 1, duration: 400, useNativeDriver: true }),
-          Animated.timing(a, { toValue: 0.4, duration: 400, useNativeDriver: true }),
-        ]),
-      ),
-    );
-    loops.forEach((l) => l.start());
-    return () => loops.forEach((l) => l.stop());
-  }, [dots]);
+    const vals = [d0, d1, d2];
+    if (reduce) {
+      vals.forEach((d) => {
+        d.value = 0.7;
+      });
+      return;
+    }
+    vals.forEach((d, i) => {
+      d.value = 0.4;
+      d.value = withRepeat(
+        withSequence(
+          withDelay(i * 160, withTiming(1, { duration: 400 })),
+          withTiming(0.4, { duration: 400 }),
+        ),
+        -1,
+        false,
+      );
+    });
+  }, [reduce, d0, d1, d2]);
+
+  const s0 = useAnimatedStyle(() => ({ opacity: d0.value }));
+  const s1 = useAnimatedStyle(() => ({ opacity: d1.value }));
+  const s2 = useAnimatedStyle(() => ({ opacity: d2.value }));
+  const dotStyles = [s0, s1, s2];
+
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: spacing.md }}>
       <IrisOrb size={18} />
-      {dots.map((a, i) => (
+      {dotStyles.map((st, i) => (
         <Animated.View
           key={i}
-          style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: palette.bright, opacity: a }}
+          style={[{ width: 6, height: 6, borderRadius: 3, backgroundColor: palette.bright }, st]}
         />
       ))}
     </View>
