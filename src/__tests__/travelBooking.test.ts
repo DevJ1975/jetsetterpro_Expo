@@ -34,6 +34,9 @@ describe('validateDriver', () => {
     expect(validateDriver({ ...base, bornOn: '2015-01-01' }, NOW).ok).toBe(false);
     expect(validateDriver({ ...base, bornOn: '01/01/1990' }, NOW).ok).toBe(false);
   });
+  it('accepts a driver who turns 18 today (calendar age)', () => {
+    expect(validateDriver({ ...base, bornOn: '2008-07-16' }, NOW).ok).toBe(true);
+  });
 });
 
 describe('formatters', () => {

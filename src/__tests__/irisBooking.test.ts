@@ -60,6 +60,17 @@ describe('validatePassenger', () => {
     expect(v.ok).toBe(false);
     if (!v.ok) expect(v.problems.length).toBeGreaterThanOrEqual(5);
   });
+
+  it('accepts an adult who turns 18 today (calendar age, not a 365.25-day average)', () => {
+    // Exactly 18 years before NOW — the 365.25 average wrongly computed 17.99.
+    const v = validatePassenger({ ...goodInput, bornOn: '2008-07-16' }, NOW);
+    expect(v.ok).toBe(true);
+  });
+  it('still rejects one day short of 18', () => {
+    const v = validatePassenger({ ...goodInput, bornOn: '2008-07-17' }, NOW);
+    expect(v.ok).toBe(false);
+    if (!v.ok) expect(v.problems.join('; ')).toContain('adult');
+  });
 });
 
 describe('buildCreateOrderPayload', () => {

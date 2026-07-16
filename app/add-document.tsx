@@ -52,23 +52,30 @@ export default function AddDocumentScreen() {
   const save = async () => {
     if (!valid || saving) return;
     setSaving(true);
-    const id = makeId();
-    const num = number.trim();
-    if (num) await setDocNumber(id, num); // → encrypted keychain, never in plain storage
-    // Sync the photo to the user's private Cloud Storage so it survives a
-    // reinstall; the local uri stays as an offline/unconfigured fallback.
-    const stored = photoUri ? await uploadUserImage(photoUri, 'vault', id) : null;
-    addMeta({
-      id,
-      type: docType,
-      name: name.trim(),
-      expiry: hasExpiry ? expiry.trim() : undefined,
-      hasNumber: num.length > 0,
-      photoUri,
-      remoteUrl: stored?.url,
-      storagePath: stored?.path,
-    });
-    router.back();
+    try {
+      const id = makeId();
+      const num = number.trim();
+      if (num) await setDocNumber(id, num); // → encrypted keychain, never in plain storage
+      // Back the photo up to the user's private Cloud Storage; the local uri
+      // stays as an offline/unconfigured fallback.
+      const stored = photoUri ? await uploadUserImage(photoUri, 'vault', id) : null;
+      addMeta({
+        id,
+        type: docType,
+        name: name.trim(),
+        expiry: hasExpiry ? expiry.trim() : undefined,
+        hasNumber: num.length > 0,
+        photoUri,
+        remoteUrl: stored?.url,
+        storagePath: stored?.path,
+      });
+      router.back();
+    } catch {
+      // A secure-store write can reject — never leave Save stuck disabled.
+      Alert.alert('Could not save', 'Something went wrong saving this document. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const color = DOC_COLORS[docType];

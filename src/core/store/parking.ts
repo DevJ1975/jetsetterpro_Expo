@@ -21,7 +21,7 @@ export interface ParkingSpot {
   note?: string;
   /** expo-image-picker asset uri (local fallback). */
   photoUri?: string;
-  /** Cloud Storage download URL, once synced — survives reinstall/device change. */
+  /** Cloud Storage download URL, once synced — the image is backed up off-device. */
   remoteUrl?: string;
   /** Cloud Storage object path, kept so the image can be deleted deterministically. */
   storagePath?: string;

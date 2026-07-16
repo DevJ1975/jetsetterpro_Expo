@@ -26,6 +26,15 @@ const PHONE_RE = /^\+[1-9]\d{6,14}$/; // E.164
 const GENDERS = new Set(['m', 'f']);
 const TITLES = new Set(['mr', 'ms', 'mrs', 'dr']);
 
+/** True if `dob` is at least `years` calendar years before `now` — birthday-
+ *  accurate, unlike a 365.25-day average which rejects a valid 18-year-old on
+ *  their birthday. */
+export function isAtLeast(dob: Date, years: number, now: Date): boolean {
+  const threshold = new Date(dob);
+  threshold.setUTCFullYear(dob.getUTCFullYear() + years);
+  return now.getTime() >= threshold.getTime();
+}
+
 function realDate(iso: string): Date | null {
   if (!DATE_RE.test(iso)) return null;
   const d = new Date(`${iso}T00:00:00Z`);
@@ -55,10 +64,10 @@ export function validatePassenger(
   const dob = realDate(bornOn);
   if (!dob) {
     problems.push('date of birth must be a real date in YYYY-MM-DD format');
-  } else {
-    const age = (now.getTime() - dob.getTime()) / (365.25 * 24 * 3600 * 1000);
-    if (age < 18) problems.push('passenger must be an adult (18+) to book here');
-    else if (age > 110) problems.push('date of birth looks implausible — please re-check');
+  } else if (!isAtLeast(dob, 18, now)) {
+    problems.push('passenger must be an adult (18+) to book here');
+  } else if (isAtLeast(dob, 111, now)) {
+    problems.push('date of birth looks implausible — please re-check');
   }
   if (!GENDERS.has(gender)) problems.push("gender must be 'm' or 'f' (airline requirement)");
   if (!TITLES.has(title)) problems.push("title must be one of mr, ms, mrs, dr");

@@ -16,7 +16,7 @@ import { useJournal } from '@/src/core/store/journal';
 import { exifCaptureDate, usePhotoMeta } from '@/src/features/journal/photoMeta';
 import { ShareCard } from '@/src/features/journal/ShareCard';
 import { formatDate, formatDateRange, makeId, parseDate, toISODate } from '@/src/core/format';
-import { uploadUserImage } from '@/src/core/firebase/storage';
+import { deleteUserImage, uploadUserImage } from '@/src/core/firebase/storage';
 
 // iOS TripJournalView parity: gradient hero, photos/days/active-days stats,
 // 3-col chronological grid, shareable summary card.
@@ -37,6 +37,7 @@ export default function JournalScreen() {
   const removePhoto = useJournal((s) => s.removePhoto);
   const dates = usePhotoMeta((s) => s.dates);
   const setDates = usePhotoMeta((s) => s.setDates);
+  const setPaths = usePhotoMeta((s) => s.setPaths);
   const removeUri = usePhotoMeta((s) => s.removeUri);
 
   const shareRef = useRef<View>(null);
@@ -94,18 +95,21 @@ export default function JournalScreen() {
     });
     if (res.canceled) return;
     const fallback = toISODate();
-    // Sync each memory to Cloud Storage so the scrapbook survives a reinstall;
-    // the durable download URL becomes the stable key (dates + list), and the
-    // local uri is the fallback when Storage is unconfigured/offline.
-    const stamped = await Promise.all(
+    // Back each memory up to Cloud Storage; the durable download URL becomes the
+    // stable key (dates + list), and the local uri is the fallback when Storage
+    // is unconfigured/offline.
+    const uploaded = await Promise.all(
       res.assets.map(async (a) => {
         const stored = await uploadUserImage(a.uri, `journal/${trip.id}`, makeId());
-        return { uri: stored?.url ?? a.uri, date: exifCaptureDate(a.exif) ?? fallback };
+        return { uri: stored?.url ?? a.uri, path: stored?.path, date: exifCaptureDate(a.exif) ?? fallback };
       }),
     );
-    stamped.sort((a, b) => a.date.localeCompare(b.date));
-    setDates(Object.fromEntries(stamped.map((s) => [s.uri, s.date])));
-    addPhotos(trip.id, stamped.map((s) => s.uri));
+    uploaded.sort((a, b) => a.date.localeCompare(b.date));
+    setDates(Object.fromEntries(uploaded.map((s) => [s.uri, s.date])));
+    // Record the Storage path per uri so a removed photo's cloud object is
+    // deleted rather than orphaned.
+    setPaths(Object.fromEntries(uploaded.flatMap((s) => (s.path ? [[s.uri, s.path]] : []))));
+    addPhotos(trip.id, uploaded.map((s) => s.uri));
   };
 
   const confirmRemove = (uri: string) => {
@@ -117,6 +121,8 @@ export default function JournalScreen() {
         style: 'destructive',
         onPress: () => {
           removePhoto(trip.id, uri);
+          const path = usePhotoMeta.getState().paths[uri];
+          if (path) void deleteUserImage(path);
           removeUri(uri);
         },
       },

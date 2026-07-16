@@ -10,6 +10,19 @@ import { useSession } from '@/src/core/store/session';
 
 export type DisruptionKind = 'DELAY' | 'GATE_CHANGE' | 'CANCELLED' | 'DIVERTED';
 
+const KNOWN_KINDS: readonly DisruptionKind[] = ['DELAY', 'GATE_CHANGE', 'CANCELLED', 'DIVERTED'];
+
+/** A feed doc is usable only if it has an id and a known kind — guards the
+ *  banner/ticker/mark-read against a malformed or future-kind document. */
+function isValidEvent(e: Partial<DisruptionEvent> | undefined): e is DisruptionEvent {
+  return (
+    !!e &&
+    typeof e.id === 'string' &&
+    e.id.length > 0 &&
+    KNOWN_KINDS.includes(e.kind as DisruptionKind)
+  );
+}
+
 export interface DisruptionEvent {
   id: string;
   kind: DisruptionKind;
@@ -39,7 +52,7 @@ export function useDisruptions(max = 20): DisruptionEvent[] {
     );
     return onSnapshot(
       q,
-      (snap) => setEvents(snap.docs.map((d) => d.data() as DisruptionEvent)),
+      (snap) => setEvents(snap.docs.map((d) => d.data() as Partial<DisruptionEvent>).filter(isValidEvent)),
       () => setEvents([]),
     );
   }, [max, uid]);

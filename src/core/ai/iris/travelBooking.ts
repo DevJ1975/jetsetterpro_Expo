@@ -3,6 +3,7 @@ import type {
   ProductBooking,
   StaySearchResult,
 } from '@/src/core/api/travelBookings';
+import { isAtLeast } from '@/src/core/ai/iris/booking';
 
 // Pure logic behind IRIS's in-chat hotel + car booking — identity validation
 // and the transcript/confirmation strings. Side-effect-free so it's testable.
@@ -51,9 +52,9 @@ export function validateDriver(input: Record<string, unknown>, now: Date = new D
   if (!DATE_RE.test(dob) || Number.isNaN(Date.parse(`${dob}T00:00:00Z`))) {
     problems.push('driver date of birth must be a real date in YYYY-MM-DD format');
   } else {
-    const age = (now.getTime() - Date.parse(`${dob}T00:00:00Z`)) / (365.25 * 24 * 3600 * 1000);
-    if (age < 18) problems.push('driver must be at least 18');
-    else if (age > 110) problems.push('driver date of birth looks implausible');
+    const d = new Date(`${dob}T00:00:00Z`);
+    if (!isAtLeast(d, 18, now)) problems.push('driver must be at least 18');
+    else if (isAtLeast(d, 111, now)) problems.push('driver date of birth looks implausible');
   }
   return problems.length ? { ok: false, problems } : { ok: true, driver: { ...fields, date_of_birth: dob } };
 }

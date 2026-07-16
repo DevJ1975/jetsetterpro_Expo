@@ -55,7 +55,6 @@ export default function HomeScreen() {
   const lastCelebratedOn = usePreferences((s) => s.lastCelebratedOn);
   const markCelebrated = usePreferences((s) => s.markCelebrated);
   const reduce = useReduceMotion();
-  const [dismissedCelebration, setDismissedCelebration] = useState(false);
   const trips = useTravel((s) => s.trips);
   const expenses = useTravel((s) => s.expenses);
   const disruptions = useDisruptions(5);
@@ -99,9 +98,11 @@ export default function HomeScreen() {
 
   // Show the once-a-day confetti when today is an occasion and it hasn't been
   // celebrated yet — derived (no effect); dismissing marks it in the store.
+  // lastCelebratedOn (persisted, set on dismiss) is the once-per-day guard — it
+  // updates synchronously so no session flag is needed (and a session flag would
+  // wrongly suppress the next day's occasion if the app stays open past midnight).
   const todayKey = toISODate(today);
-  const showCelebration =
-    !!occasion && !reduce && lastCelebratedOn !== todayKey && !dismissedCelebration;
+  const showCelebration = !!occasion && !reduce && lastCelebratedOn !== todayKey;
 
   // Header chip: home-airport weather when set, else next destination.
   const weatherCity = homeAirport.trim() || trip?.destination;
@@ -139,10 +140,7 @@ export default function HomeScreen() {
         <SuccessAnimation
           title={`${occasion.greeting}${firstName ? `, ${firstName}` : ''}! ${occasion.emoji}`}
           subtitle={occasion.key === 'birthday' ? 'Wishing you safe and wonderful travels.' : 'From all of us at JetSetter Pro.'}
-          onDismiss={() => {
-            markCelebrated(todayKey);
-            setDismissedCelebration(true);
-          }}
+          onDismiss={() => markCelebrated(todayKey)}
         />
       ) : null}
 

@@ -47,7 +47,8 @@ async function searchCars(body) {
       driver: { age: Math.max(18, Math.min(99, num(driverAge) || 30)) },
     },
   });
-  const results = (data.results || data || []).slice(0, 12).map((r) => ({
+  const rows = Array.isArray(data && data.results) ? data.results : Array.isArray(data) ? data : [];
+  const results = rows.slice(0, 12).map((r) => ({
     rateId: r.rate_id || r.id,
     car: r.car && r.car.name,
     category: r.car && r.car.category,
