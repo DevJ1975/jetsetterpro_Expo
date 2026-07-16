@@ -42,12 +42,22 @@ verifies the caller's Firebase ID token (`lib/auth.js`) and rate-limits per uid.
 | `translate` | HTTPS POST | Google Cloud Translation v2 (ADC) | — (service account) |
 | `duffelApi` | HTTPS POST | Flight booking — offers/seats/orders/cancel (test mode) | `DUFFEL_API_KEY` |
 | `disruptionWatch` | Schedule (10 min) | Diffs flight status → events + Expo push | `AERODATABOX_API_KEY`, `EXPO_ACCESS_TOKEN` (opt) |
+| `stateDept` | HTTPS GET | US State Dept travel advisories (Level 1–4), cached | — (public CC-BY) |
 
 The **flight cache** (`lib/flightCache.js`) is the free-tier protector: entries
 are keyed by flight+date and shared across all users, with phase-aware TTLs
 (6 h before departure, 5 min in the flight window, 90 s for positions, frozen
 after arrival) and a monthly upstream-call budget that serves stale data rather
 than exceeding quota.
+
+The **travel advisories** (`stateDept.js`) come from State's public CC-BY data
+API — no key. The full list is fetched once per 12 h and shared across all users
+and countries (`stateDeptCache/advisories`), then filtered per request. ⚠️ The
+exact `cadataapi.state.gov` URL + response shape are UNVERIFIED (network-blocked
+from CI/agents) — confirm against a live call on first deploy; the normalizer
+tolerates several shapes and logs a warning on mismatch. The CC-BY attribution
+("U.S. Department of State, Bureau of Consular Affairs") is returned and shown in
+the app. Passport application status + STEP have no API and remain deep-links.
 
 **Runtime & cost guards** (`index.js` `setGlobalOptions`): all functions pin
 `us-central1` and cap `maxInstances: 10`, so a traffic spike or abuse can't run

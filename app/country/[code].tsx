@@ -9,6 +9,7 @@ import { BackHeader } from '@/src/features/common/BackHeader';
 import { EmptyState } from '@/src/features/common/EmptyState';
 import { COUNTRIES, VISA_META, type CountryInfo } from '@/src/core/data/countries';
 import { languageForCountry, PHRASE_LABELS } from '@/src/core/data/phrasebook';
+import { advisoryTone, useTravelAdvisory } from '@/src/core/api/advisories';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -95,6 +96,9 @@ export default function CountryDetailScreen() {
   const router = useRouter();
   const c = COUNTRIES.find((x) => x.code === code);
   const [copied, setCopied] = useState<string | null>(null);
+  // State Dept advisory (Level 1–4). Null/undefined (unconfigured / not listed /
+  // endpoint error) simply hides the card — the rest of the screen is unaffected.
+  const advisory = useTravelAdvisory(c?.code, c?.name).data;
 
   useEffect(() => {
     if (!copied) return;
@@ -156,6 +160,35 @@ export default function CountryDetailScreen() {
             </Text>
           ) : null}
         </View>
+
+        {/* Travel advisory (US State Dept, CC-BY) — hidden when unavailable */}
+        {advisory ? (
+          <Card variant="glass" style={{ marginBottom: spacing.lg }}>
+            <Pressable
+              onPress={() => {
+                if (advisory.url) Linking.openURL(advisory.url).catch(() => {});
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`Travel advisory Level ${advisory.level}, ${advisory.label}. Opens the full advisory.`}
+              style={({ pressed }) => [pressed && { opacity: 0.8 }]}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ flex: 1 }}>
+                  <SectionLabel>Travel advisory</SectionLabel>
+                </View>
+                <Badge tone={advisoryTone(advisory.level)} label={`Level ${advisory.level}`} />
+              </View>
+              <Text style={[type.body, { marginTop: 2 }]}>{advisory.label}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing.sm }}>
+                <Text style={[type.caption, { color: palette.bright }]}>Full advisory</Text>
+                <Ionicons name="open-outline" size={12} color={palette.bright} />
+              </View>
+              <Text style={[type.caption, { marginTop: spacing.xs, color: palette.faint }]}>
+                Source: {advisory.source}
+              </Text>
+            </Pressable>
+          </Card>
+        ) : null}
 
         {/* Visa badge row → full visa detail */}
         <Card variant="glass" style={{ marginBottom: spacing.lg }}>
