@@ -83,13 +83,25 @@ export function CategoryBarChart({
     grow.value = reduce ? 1 : withTiming(1, { duration: 700, easing: Easing.out(Easing.cubic) });
   }, [width, reduce, grow, data.length]);
 
+  // The SVG itself is invisible to screen readers, so announce the full
+  // breakdown on the container: "Spending by category. Food, $420. …".
+  const a11yLabel =
+    data.length > 0
+      ? `Spending by category. ${data
+          .map((d) => `${EXPENSE_CATEGORY_META[d.category].label}, ${formatMoney(Math.round(d.amount), currency)}`)
+          .join('. ')}.`
+      : 'Spending by category. No expenses yet.';
+
   return (
     <View
       style={{ width: '100%', height }}
       onLayout={(e) => setWidth(Math.round(e.nativeEvent.layout.width))}
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={a11yLabel}
     >
       {width > 0 && max > 0 ? (
-        <Svg width={width} height={height}>
+        <Svg width={width} height={height} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           {data.map((d, i) => {
             const meta = EXPENSE_CATEGORY_META[d.category];
             const barW = Math.max(3, (d.amount / max) * plotW);

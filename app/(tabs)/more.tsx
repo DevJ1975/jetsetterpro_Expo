@@ -4,6 +4,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Badge, Card, ListRow, ScreenHeader, SectionLabel, palette, spacing, type } from '@/src/ui';
 import { Screen } from '@/src/features/common/Screen';
+import { AppFooter } from '@/src/features/common/AppFooter';
 import { IconWell } from '@/src/features/common/IconWell';
 import { usePreferences } from '@/src/core/store/preferences';
 
@@ -183,7 +184,8 @@ export default function MoreScreen() {
           ))}
         </Card>
       ))}
-      <View style={{ height: spacing.xxxl }} />
+      <AppFooter />
+      <View style={{ height: spacing.xxl }} />
     </Screen>
   );
 }

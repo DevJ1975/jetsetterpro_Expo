@@ -20,12 +20,13 @@ import DuffelAncillariesSheet from '@/src/features/booking/DuffelAncillariesShee
 import { toISODate } from '@/src/core/format';
 import {
   DuffelOfferSummary,
+  confirmCancel as confirmCancelOrder,
   createOrder,
   getOffer,
   getSeatMaps,
   isBookingAvailable,
+  quoteCancel,
   searchOffers,
-  useCancelOrder,
   useMyOrders,
 } from '@/src/core/api/duffel';
 import { activeOrNextTrip, useTravel } from '@/src/core/store/travel';
@@ -112,7 +113,7 @@ export default function BookingScreen() {
   const [phone, setPhone] = useState('');
 
   const orders = useMyOrders();
-  const cancel = useCancelOrder();
+  const [cancelling, setCancelling] = useState(false);
 
   const available = isBookingAvailable();
 
@@ -177,20 +178,38 @@ export default function BookingScreen() {
     }
   };
 
-  const confirmCancel = (orderId: string, ref?: string) => {
-    Alert.alert('Cancel booking', `Cancel ${ref ?? orderId}? Any refund is confirmed immediately.`, [
-      { text: 'Keep booking', style: 'cancel' },
-      {
-        text: 'Cancel booking',
-        style: 'destructive',
-        onPress: () => {
-          cancel.mutate(orderId, {
-            onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['duffelOrders'] }),
-            onError: (e) => Alert.alert('Could not cancel', bookingError(e)),
-          });
+  // Two-step cancel: quote the real refund first (a pending Duffel
+  // cancellation that lapses harmlessly if not confirmed), show it, then
+  // confirm only on the user's explicit choice.
+  const confirmCancel = async (orderId: string, ref?: string) => {
+    if (cancelling) return;
+    setCancelling(true);
+    try {
+      const { cancellation } = await quoteCancel(orderId);
+      const refund = cancellation.refund_amount
+        ? `${cancellation.refund_amount} ${cancellation.refund_currency ?? ''}`.trim()
+        : 'determined by the airline';
+      Alert.alert('Cancel booking', `Cancel ${ref ?? orderId}?\nRefund: ${refund}`, [
+        { text: 'Keep booking', style: 'cancel', onPress: () => setCancelling(false) },
+        {
+          text: 'Cancel booking',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await confirmCancelOrder(cancellation.id);
+              void queryClient.invalidateQueries({ queryKey: ['duffelOrders'] });
+            } catch (e) {
+              Alert.alert('Could not cancel', bookingError(e));
+            } finally {
+              setCancelling(false);
+            }
+          },
         },
-      },
-    ]);
+      ]);
+    } catch (e) {
+      Alert.alert('Could not cancel', bookingError(e));
+      setCancelling(false);
+    }
   };
 
   // Ancillaries step renders full-bleed (WebView needs the height).

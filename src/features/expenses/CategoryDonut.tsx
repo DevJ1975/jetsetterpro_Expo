@@ -60,7 +60,15 @@ export function CategoryDonut({
 
   return (
     <View style={{ width: size, height: size, alignSelf: 'center' }}>
-      <Svg width={size} height={size}>
+      {/* The arcs are decorative — the same figures are read from the center
+          total and the category legend beside the donut, so keep a screen
+          reader from landing on a meaningless graphic. */}
+      <Svg
+        width={size}
+        height={size}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
         {total <= 0 ? (
           <Circle
             cx={size / 2}

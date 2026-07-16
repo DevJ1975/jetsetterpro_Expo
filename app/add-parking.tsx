@@ -8,6 +8,7 @@ import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native';
 import { Card, Input, palette, radii, spacing, type } from '@/src/ui';
 import { Screen } from '@/src/features/common/Screen';
 import { ModalHeader } from '@/src/features/common/ModalHeader';
+import { useSaveCelebration } from '@/src/features/common/SaveCelebration';
 import { makeId } from '@/src/core/format';
 import { useParking } from '@/src/core/store/parking';
 
@@ -15,6 +16,7 @@ export default function AddParkingScreen() {
   const router = useRouter();
   const setSpot = useParking((s) => s.setSpot);
   const existing = useParking((s) => s.spot);
+  const { celebrate, overlay } = useSaveCelebration();
 
   // Prefill from the active spot so this screen also edits it (single spot).
   const [level, setLevel] = useState(existing?.level ?? '');
@@ -87,7 +89,11 @@ export default function AddParkingScreen() {
       // Preserve the original save time when editing an existing spot.
       createdAt: existing?.createdAt ?? new Date().toISOString(),
     });
-    router.back();
+    celebrate({
+      title: existing ? 'Parking updated' : 'Parking saved',
+      subtitle: [level.trim(), section.trim(), stall.trim()].filter(Boolean).join(' · ') || 'Pin dropped',
+      onDone: () => router.back(),
+    });
   };
 
   return (
@@ -95,6 +101,7 @@ export default function AddParkingScreen() {
       contentStyle={{ paddingHorizontal: spacing.xl, paddingBottom: spacing.xxxl }}
       edges={['top']}
     >
+      {overlay}
       <ModalHeader
         title={existing ? 'Edit Parking' : 'Save Parking'}
         onSave={save}

@@ -5,6 +5,7 @@ import { Pressable, Text, View } from 'react-native';
 import { Card, Input, palette, radii, spacing, type } from '@/src/ui';
 import { Screen } from '@/src/features/common/Screen';
 import { ModalHeader } from '@/src/features/common/ModalHeader';
+import { useSaveCelebration } from '@/src/features/common/SaveCelebration';
 import { Chips } from '@/src/features/common/Chips';
 import { EXPENSE_CATEGORY_META } from '@/src/features/expenses/categoryMeta';
 import { suggestCategory } from '@/src/features/expenses/suggestCategory';
@@ -42,6 +43,7 @@ function ManualForm({ prefill }: { prefill: Prefill }) {
   const router = useRouter();
   const addExpense = useTravel((s) => s.addExpense);
   const homeCurrency = usePreferences((s) => s.homeCurrency);
+  const { celebrate, overlay } = useSaveCelebration();
 
   const scanned = prefill.scanned === '1';
   const [amount, setAmount] = useState(prefill.amount ?? '');
@@ -65,20 +67,27 @@ function ManualForm({ prefill }: { prefill: Prefill }) {
 
   const save = () => {
     if (!valid) return;
+    const amt = Math.round(amountNum * 100) / 100;
+    const cur = (currency.trim().toUpperCase() || 'USD').slice(0, 3);
     addExpense({
       id: makeId(),
-      amount: Math.round(amountNum * 100) / 100,
-      currency: (currency.trim().toUpperCase() || 'USD').slice(0, 3),
+      amount: amt,
+      currency: cur,
       category,
       merchant: merchant.trim(),
       date,
       notes: notes.trim() || undefined,
     });
-    router.back();
+    celebrate({
+      title: 'Expense logged',
+      subtitle: `${formatMoney(amt, cur)} · ${merchant.trim()}`,
+      onDone: () => router.back(),
+    });
   };
 
   return (
     <Screen contentStyle={{ paddingHorizontal: spacing.xl }} edges={['top']}>
+      {overlay}
       <ModalHeader title="Add Expense" onSave={save} saveDisabled={!valid} />
       {scanned ? (
         <View style={{ alignItems: 'flex-start', marginBottom: spacing.md }}>
@@ -174,6 +183,7 @@ function ManualForm({ prefill }: { prefill: Prefill }) {
 function MileageForm() {
   const router = useRouter();
   const addExpense = useTravel((s) => s.addExpense);
+  const { celebrate, overlay } = useSaveCelebration();
 
   const [fromAddress, setFromAddress] = useState('');
   const [toAddress, setToAddress] = useState('');
@@ -198,13 +208,18 @@ function MileageForm() {
       date: toISODate(),
       notes: notes.trim() || undefined,
     });
-    router.back();
+    celebrate({
+      title: 'Mileage logged',
+      subtitle: `${formatMoney(amount, 'USD')} · ${miles} mi`,
+      onDone: () => router.back(),
+    });
   };
 
   const transport = EXPENSE_CATEGORY_META.TRANSPORT;
 
   return (
     <Screen contentStyle={{ paddingHorizontal: spacing.xl }} edges={['top']}>
+      {overlay}
       <ModalHeader title="Log Mileage" onSave={save} saveDisabled={!valid} />
       <Card style={{ gap: spacing.lg }}>
         <Input

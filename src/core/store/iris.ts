@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { runIrisConversation } from '@/src/core/ai/agentLoop';
 import { ChatMessage } from '@/src/core/ai/anthropic';
+import { boundedHistory } from '@/src/core/ai/history';
 import { buildSystemPrompt } from '@/src/core/ai/iris/agent';
 import { composeFirstTurn, currentSnapshot } from '@/src/core/ai/iris/context';
 import { executeIrisTool, IRIS_TOOLS } from '@/src/core/ai/iris/tools';
@@ -79,7 +80,9 @@ export const useIris = create<IrisChatState>((set, get) => ({
     try {
       const result = await runIrisConversation({
         system: buildSystemPrompt(),
-        messages: [...s.apiMessages, apiUser],
+        // Bound the history so a marathon chat never trips aiIris's 60-message
+        // cap; trims whole old exchanges from the front, keeping the newest.
+        messages: boundedHistory([...s.apiMessages, apiUser]),
         tools: IRIS_TOOLS,
         executeTool: executeIrisTool,
         // Reset the live buffer each turn so the streamed bubble shows only the

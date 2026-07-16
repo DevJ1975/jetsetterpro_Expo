@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { palette, spacing, type } from '@/src/ui';
 import { Screen } from '@/src/features/common/Screen';
 import { BackHeader } from '@/src/features/common/BackHeader';
+import { AppFooter } from '@/src/features/common/AppFooter';
 import { BrandHero } from '@/src/features/about/BrandHero';
 import { FounderCard } from '@/src/features/about/FounderCard';
 import { TourCarousel } from '@/src/features/about/TourCarousel';
@@ -39,6 +40,8 @@ export default function AboutScreen() {
         </View>
         <Text style={styles.copyright}>© 2026 Trainovate Technologies LLC</Text>
       </View>
+
+      <AppFooter />
     </Screen>
   );
 }
