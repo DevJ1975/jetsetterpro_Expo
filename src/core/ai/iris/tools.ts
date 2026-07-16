@@ -1,8 +1,12 @@
 import { AgentToolResult } from '@/src/core/ai/agentLoop';
 import { ToolSchema } from '@/src/core/ai/anthropic';
+import { BackendError, isBackendConfigured } from '@/src/core/api/backend';
+import { confirmCancel, createOrder, getOffer, listOrders, quoteCancel } from '@/src/core/api/duffel';
 import { convertCurrency } from '@/src/core/api/exchange';
+import { searchFlightsViaAgent } from '@/src/core/api/flightAgent';
 import { cToF, fetchWeather } from '@/src/core/api/weather';
 import { formatDateRange, makeId, toISODate } from '@/src/core/format';
+import { queryClient } from '@/src/core/query';
 import { addTripToCalendar } from '@/src/core/services/calendar';
 import { useCheckIn } from '@/src/core/store/checkin';
 import { useIrisMemory, type MemoryCategory } from '@/src/core/store/irisMemory';
@@ -10,6 +14,47 @@ import { useIrisRouter, type Destination, type PendingKind } from '@/src/core/st
 import { extractFlightNumber } from '@/src/core/ai/iris/triggers';
 import { activeOrNextTrip, nextUpcomingFlight, useTravel } from '@/src/core/store/travel';
 import type { ExpenseCategory } from '@/src/types/models';
+import {
+  buildCreateOrderPayload,
+  describeOrders,
+  formatRankedOffers,
+  fullOfferToSummary,
+  offerExpired,
+  summarizeBookingForConfirm,
+  trimOfferDetailsForModel,
+  validatePassenger,
+} from '@/src/core/ai/iris/booking';
+
+const IATA_RE = /^[A-Z]{3}$/;
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const OFFER_ID_RE = /^off_[A-Za-z0-9]+$/;
+const ORDER_ID_RE = /^ord_[A-Za-z0-9]+$/;
+
+const BOOKING_NOT_CONNECTED =
+  "Flight booking isn't connected in this build yet — it activates when the backend is deployed. The classic Book screen has provider links meanwhile.";
+
+/** Friendly strings for booking API failures — the model relays these
+ *  honestly instead of surfacing raw error codes. */
+function bookingApiError(e: unknown): string {
+  if (e instanceof BackendError) {
+    switch (e.code) {
+      case 'rate_limited':
+        return 'The booking service is briefly rate-limited — try again in a minute or two.';
+      case 'ai_unconfigured':
+      case 'duffel_unconfigured':
+        return BOOKING_NOT_CONNECTED;
+      case 'quote_expired':
+        return 'That refund quote expired before confirmation — run cancelBooking again for a fresh quote.';
+      case 'already_cancelled':
+        return 'That booking is already cancelled.';
+      case 'not_found':
+        return "I couldn't find that booking on this account.";
+      case 'bad_request':
+        return 'The booking service rejected the request — double-check the details and try again.';
+    }
+  }
+  return 'The booking service had a problem. Nothing was changed — please try again shortly.';
+}
 
 // The IRIS tool catalog (working subset for this phase). Tool NAMES and argument
 // names match the iOS @Generable tools exactly. READ tools run immediately;
@@ -58,6 +103,7 @@ const SCREEN_TO_DESTINATION: Record<string, Destination> = {
   packingList: 'packingList',
   groundTransport: 'groundTransport',
   currency: 'currency',
+  booking: 'booking',
 };
 
 export const IRIS_TOOLS: ToolSchema[] = [
@@ -166,6 +212,74 @@ export const IRIS_TOOLS: ToolSchema[] = [
     input_schema: {
       type: 'object',
       properties: { tripName: { type: 'string', description: 'Optional; else active/next trip.' } },
+    },
+  },
+  {
+    name: 'searchFlights',
+    description:
+      'Search real bookable flights and get a ranked shortlist with live prices (Duffel test mode). Read-only — runs right away. Offers expire ~30 minutes after the search.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        origin: { type: 'string', description: '3-letter IATA airport code, e.g. JFK.' },
+        destination: { type: 'string', description: '3-letter IATA airport code, e.g. LHR.' },
+        departureDate: { type: 'string', description: 'yyyy-MM-dd' },
+        returnDate: { type: 'string', description: 'yyyy-MM-dd — include for a round trip.' },
+        cabinClass: {
+          type: 'string',
+          enum: ['economy', 'premium_economy', 'business', 'first'],
+          description: 'Defaults to economy.',
+        },
+        preferences: {
+          type: 'string',
+          description: 'Free-text traveler preferences, e.g. "cheapest nonstop, morning departure".',
+        },
+      },
+      required: ['origin', 'destination', 'departureDate'],
+    },
+  },
+  {
+    name: 'getBookingDetails',
+    description:
+      'Fresh price, expiry, bag allowance and change/refund conditions for ONE offer from searchFlights. Read-only.',
+    input_schema: {
+      type: 'object',
+      properties: { offerId: { type: 'string', description: 'An off_… id from searchFlights.' } },
+      required: ['offerId'],
+    },
+  },
+  {
+    name: 'listMyBookings',
+    description: "The user's existing flight bookings made in this app (read-only).",
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'bookFlight',
+    description:
+      'Prepare a flight booking for ONE adult passenger (staged — a confirmation card appears; NOTHING is purchased by this call). Requires the full passenger identity, collected from the user first.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        offerId: { type: 'string', description: 'The chosen off_… id from searchFlights.' },
+        givenName: { type: 'string', description: 'Passenger first/given name, as on ID.' },
+        familyName: { type: 'string', description: 'Passenger last/family name, as on ID.' },
+        bornOn: { type: 'string', description: 'Date of birth, yyyy-MM-dd.' },
+        gender: { type: 'string', enum: ['m', 'f'], description: 'Airline requirement.' },
+        title: { type: 'string', enum: ['mr', 'ms', 'mrs', 'dr'] },
+        email: { type: 'string', description: 'Contact email for the booking.' },
+        phone: { type: 'string', description: 'Phone with country code, e.g. +14155550123.' },
+      },
+      required: ['offerId', 'givenName', 'familyName', 'bornOn', 'gender', 'title', 'email', 'phone'],
+    },
+  },
+  {
+    name: 'cancelBooking',
+    description:
+      'Prepare a booking cancellation with the real refund quote (staged — the user confirms on a card; nothing is cancelled by this call).',
+    input_schema: {
+      type: 'object',
+      properties: { orderId: { type: 'string', description: 'An ord_… id from listMyBookings.' } },
+      required: ['orderId'],
     },
   },
 ];
@@ -362,6 +476,138 @@ export async function executeIrisTool(
         },
         `Prepared: ${summary}. Ask the user to confirm — nothing added yet.`,
       );
+    }
+
+    case 'searchFlights': {
+      if (!isBackendConfigured()) return { content: BOOKING_NOT_CONNECTED };
+      const origin = (str(input, 'origin') ?? '').toUpperCase();
+      const destination = (str(input, 'destination') ?? '').toUpperCase();
+      const departureDate = str(input, 'departureDate') ?? '';
+      const returnDate = str(input, 'returnDate');
+      if (!IATA_RE.test(origin) || !IATA_RE.test(destination))
+        return { content: 'Need 3-letter IATA airport codes for origin and destination.', isError: true };
+      if (!ISO_DATE_RE.test(departureDate) || (returnDate && !ISO_DATE_RE.test(returnDate)))
+        return { content: 'Dates must be yyyy-MM-dd.', isError: true };
+      try {
+        const cabin = str(input, 'cabinClass');
+        const result = await searchFlightsViaAgent({
+          origin,
+          destination,
+          departureDate,
+          returnDate,
+          cabinClass:
+            cabin === 'premium_economy' || cabin === 'business' || cabin === 'first'
+              ? cabin
+              : 'economy',
+          preferences: str(input, 'preferences'),
+        });
+        return { content: formatRankedOffers(result, { origin, destination, departureDate }) };
+      } catch (e) {
+        return { content: bookingApiError(e) };
+      }
+    }
+
+    case 'getBookingDetails': {
+      if (!isBackendConfigured()) return { content: BOOKING_NOT_CONNECTED };
+      const offerId = str(input, 'offerId') ?? '';
+      if (!OFFER_ID_RE.test(offerId))
+        return { content: 'Need an off_… offer id from searchFlights.', isError: true };
+      try {
+        const { offer } = await getOffer(offerId);
+        // Only the trimmed line enters the transcript — full offers are huge.
+        return { content: trimOfferDetailsForModel(offer) };
+      } catch (e) {
+        return { content: bookingApiError(e) };
+      }
+    }
+
+    case 'listMyBookings': {
+      if (!isBackendConfigured()) return { content: BOOKING_NOT_CONNECTED };
+      try {
+        const { orders } = await listOrders();
+        return { content: describeOrders(orders) };
+      } catch (e) {
+        return { content: bookingApiError(e) };
+      }
+    }
+
+    case 'bookFlight': {
+      if (!isBackendConfigured()) return { content: BOOKING_NOT_CONNECTED };
+      const offerId = str(input, 'offerId') ?? '';
+      if (!OFFER_ID_RE.test(offerId))
+        return { content: 'Need the off_… offer id the user chose from searchFlights.', isError: true };
+      const v = validatePassenger(input);
+      if (!v.ok)
+        return {
+          content: `Cannot book yet — ${v.problems.join('; ')}. Ask the user for the corrected details.`,
+          isError: true,
+        };
+      try {
+        // Re-fetch the offer fresh: price/expiry re-check + the Duffel-issued
+        // passenger id the order payload must carry.
+        const { offer: fullOffer } = await getOffer(offerId);
+        const offer = fullOfferToSummary(fullOffer);
+        if (offerExpired(offer.expires_at))
+          return {
+            content:
+              'That offer has expired (fares hold ~30 minutes). Run searchFlights again and pick a fresh offer.',
+          };
+        if (!offer.passengers[0]?.id)
+          return { content: 'That offer can no longer be booked — search again for a fresh one.' };
+        const payload = buildCreateOrderPayload(offer, v.passenger);
+        const summary = summarizeBookingForConfirm(offer, v.passenger);
+        return stage(
+          'bookFlight',
+          summary,
+          // Commit runs ONLY on the user's tap; it never rejects — failures
+          // resolve to a friendly line so the card can't strand its spinner.
+          async () => {
+            try {
+              const { order } = await createOrder(payload);
+              void queryClient.invalidateQueries({ queryKey: ['duffelOrders'] });
+              return `Booked! Reference ${order.booking_reference ?? order.id} — total ${order.total_amount ?? offer.total_amount} ${order.total_currency ?? offer.total_currency} (test mode, no real ticket is issued).`;
+            } catch (e) {
+              return `The booking didn't go through — ${bookingApiError(e)}`;
+            }
+          },
+          `Prepared: booking ${offer.slices[0]?.origin ?? ''}→${offer.slices[0]?.destination ?? ''} for ${v.passenger.givenName} ${v.passenger.familyName}, total ${offer.total_amount} ${offer.total_currency}. Ask the user to confirm on the card — nothing has been purchased yet.`,
+        );
+      } catch (e) {
+        return { content: bookingApiError(e) };
+      }
+    }
+
+    case 'cancelBooking': {
+      if (!isBackendConfigured()) return { content: BOOKING_NOT_CONNECTED };
+      const orderId = str(input, 'orderId') ?? '';
+      if (!ORDER_ID_RE.test(orderId))
+        return { content: 'Need the ord_… booking id from listMyBookings.', isError: true };
+      try {
+        const { cancellation } = await quoteCancel(orderId);
+        const refund = cancellation.refund_amount
+          ? `${cancellation.refund_amount} ${cancellation.refund_currency ?? ''}`.trim()
+          : 'determined by the airline';
+        const summary = `Cancel booking ${orderId}\nRefund: ${refund}`;
+        return stage(
+          'cancelBooking',
+          summary,
+          async () => {
+            try {
+              const r = await confirmCancel(cancellation.id);
+              void queryClient.invalidateQueries({ queryKey: ['duffelOrders'] });
+              const refunded = r.cancellation.refund_amount
+                ? `${r.cancellation.refund_amount} ${r.cancellation.refund_currency ?? ''}`.trim()
+                : 'as determined by the airline';
+              return `Cancelled. Refund: ${refunded}.`;
+            } catch (e) {
+              return `The cancellation didn't go through — ${bookingApiError(e)}`;
+            }
+          },
+          `Prepared: cancel ${orderId} with refund ${refund}. Ask the user to confirm on the card — nothing is cancelled yet.`,
+        );
+      } catch (e) {
+        return { content: bookingApiError(e) };
+      }
     }
 
     default:

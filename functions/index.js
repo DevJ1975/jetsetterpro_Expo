@@ -5,6 +5,7 @@
 //   flightData      GET    flight status/position lookup  AERODATABOX_API_KEY (+ OPENSKY_*)
 //   translate       POST   Google Cloud Translation v2    (ADC — no key)
 //   duffelApi       POST   flight booking (test mode)     DUFFEL_API_KEY
+//   flightAgent     POST   Genkit search-and-rank (IRIS)  ANTHROPIC_API_KEY + DUFFEL_API_KEY
 //   disruptionWatch cron   status diffs → events + push   AERODATABOX_API_KEY (+ EXPO_ACCESS_TOKEN)
 //
 // Deploy: firebase deploy --only functions   (Blaze plan required: outbound
@@ -24,5 +25,6 @@ exports.aiIris = require('./aiIris').aiIris;
 exports.flightData = require('./flightData').flightData;
 exports.translate = require('./translate').translate;
 exports.duffelApi = require('./duffel').duffelApi;
+exports.flightAgent = require('./flightAgent').flightAgent;
 exports.disruptionWatch = require('./disruptionWatch').disruptionWatch;
 exports.stateDept = require('./stateDept').stateDept;

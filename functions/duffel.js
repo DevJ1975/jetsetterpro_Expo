@@ -8,116 +8,44 @@
 //   POST { op: 'getOffer', offerId }            → offer w/ available services
 //   POST { op: 'seatMaps', offerId }            → { seat_maps }
 //   POST { op: 'createOrder', payload }         → order (payload from
-//          DuffelAncillaries onPayloadReady; server attaches balance payment)
+//          DuffelAncillaries onPayloadReady OR IRIS bookFlight; server
+//          attaches balance payment)
 //   POST { op: 'listOrders' }                   → this user's orders
-//   POST { op: 'cancelOrder', orderId }         → confirmed cancellation
+//   POST { op: 'cancelOrder', orderId }         → confirmed cancellation (legacy one-shot)
+//   POST { op: 'quoteCancel', orderId }         → pending cancellation + refund quote
+//   POST { op: 'confirmCancel', cancellationId }→ confirm a quoted cancellation
+//
+// Shared Duffel plumbing (fetch helper, validation, offer summarizer) lives in
+// lib/duffelClient.js — also used by the flightAgent Genkit function.
 const { onRequest } = require('firebase-functions/v2/https');
 const admin = require('firebase-admin');
 const { verifyBearer } = require('./lib/auth');
 const { makeLimiter } = require('./lib/rate');
+const {
+  duffel,
+  ordersRef,
+  badRequest,
+  searchOffersOp,
+  OFFER_ID_RE,
+  ORDER_ID_RE,
+  CANCELLATION_ID_RE,
+} = require('./lib/duffelClient');
 
-const BASE = 'https://api.duffel.com';
 const limited = makeLimiter(15, 60_000);
-const IATA_RE = /^[A-Z]{3}$/;
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-async function duffel(path, { method = 'GET', body } = {}) {
-  const key = process.env.DUFFEL_API_KEY;
-  if (!key) {
-    const err = new Error('duffel_unconfigured');
-    err.code = 'unconfigured';
-    throw err;
-  }
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${key}`,
-      'Duffel-Version': 'v2',
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: body ? JSON.stringify({ data: body }) : undefined,
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const err = new Error(`duffel_${res.status}`);
-    err.code = 'upstream';
-    err.status = res.status;
-    err.details = json && json.errors;
-    throw err;
-  }
-  return json.data;
-}
-
-function ordersRef(uid) {
-  return admin.firestore().collection('users').doc(uid).collection('duffelOrders');
-}
-
-async function searchOffers(body) {
-  const { origin, destination, departureDate, returnDate, passengers, cabinClass } = body;
-  if (!IATA_RE.test(origin || '') || !IATA_RE.test(destination || '') || !DATE_RE.test(departureDate || '')) {
-    const err = new Error('bad_request');
-    err.code = 'bad_request';
-    throw err;
-  }
-  const slices = [{ origin, destination, departure_date: departureDate }];
-  if (returnDate) {
-    if (!DATE_RE.test(returnDate)) {
-      const err = new Error('bad_request');
-      err.code = 'bad_request';
-      throw err;
-    }
-    slices.push({ origin: destination, destination: origin, departure_date: returnDate });
-  }
-  const pax = Array.isArray(passengers) && passengers.length ? passengers.slice(0, 9) : [{ type: 'adult' }];
-  const request = await duffel('/air/offer_requests?return_offers=true', {
-    method: 'POST',
-    body: {
-      slices,
-      passengers: pax,
-      cabin_class: ['economy', 'premium_economy', 'business', 'first'].includes(cabinClass)
-        ? cabinClass
-        : 'economy',
-    },
-  });
-  // Trim to what the results list renders; the full offer is re-fetched by id.
-  const offers = (request.offers || []).slice(0, 20).map((o) => ({
-    id: o.id,
-    total_amount: o.total_amount,
-    total_currency: o.total_currency,
-    expires_at: o.expires_at,
-    owner: o.owner && { name: o.owner.name, iata_code: o.owner.iata_code, logo_symbol_url: o.owner.logo_symbol_url },
-    slices: (o.slices || []).map((s) => ({
-      origin: s.origin && s.origin.iata_code,
-      destination: s.destination && s.destination.iata_code,
-      duration: s.duration,
-      segments: (s.segments || []).map((seg) => ({
-        operating_carrier: seg.operating_carrier && seg.operating_carrier.name,
-        marketing_carrier_flight_number: `${(seg.marketing_carrier && seg.marketing_carrier.iata_code) || ''}${seg.marketing_carrier_flight_number || ''}`,
-        departing_at: seg.departing_at,
-        arriving_at: seg.arriving_at,
-        origin: seg.origin && seg.origin.iata_code,
-        destination: seg.destination && seg.destination.iata_code,
-      })),
-    })),
-    passengers: (request.passengers || []).map((p) => ({ id: p.id, type: p.type })),
-  }));
-  return { requestId: request.id, offers };
-}
 
 async function handle(uid, body) {
   switch (body.op) {
     case 'searchOffers':
-      return searchOffers(body);
+      return searchOffersOp(body);
     case 'getOffer': {
-      if (!/^off_[A-Za-z0-9]+$/.test(body.offerId || '')) throw badRequest();
+      if (!OFFER_ID_RE.test(body.offerId || '')) throw badRequest();
       const offer = await duffel(
         `/air/offers/${body.offerId}?return_available_services=true`,
       );
       return { offer };
     }
     case 'seatMaps': {
-      if (!/^off_[A-Za-z0-9]+$/.test(body.offerId || '')) throw badRequest();
+      if (!OFFER_ID_RE.test(body.offerId || '')) throw badRequest();
       const seatMaps = await duffel(`/air/seat_maps?offer_id=${body.offerId}`);
       return { seat_maps: seatMaps };
     }
@@ -173,7 +101,7 @@ async function handle(uid, body) {
     }
     case 'cancelOrder': {
       const orderId = body.orderId || '';
-      if (!/^ord_[A-Za-z0-9]+$/.test(orderId)) throw badRequest();
+      if (!ORDER_ID_RE.test(orderId)) throw badRequest();
       const owned = await ordersRef(uid).doc(orderId).get();
       if (!owned.exists) {
         const err = new Error('not_found');
@@ -200,15 +128,98 @@ async function handle(uid, body) {
         },
       };
     }
+    case 'quoteCancel': {
+      // Step 1 of the two-step cancel used by IRIS: create (or reuse) a PENDING
+      // Duffel cancellation so the user sees the real refund before confirming.
+      // Unconfirmed quotes lapse harmlessly at their expires_at — nothing is
+      // cancelled until op:'confirmCancel'.
+      const orderId = body.orderId || '';
+      if (!ORDER_ID_RE.test(orderId)) throw badRequest();
+      const owned = await ordersRef(uid).doc(orderId).get();
+      if (!owned.exists) {
+        const err = new Error('not_found');
+        err.code = 'not_found';
+        throw err;
+      }
+      if (owned.data().cancelled) {
+        const err = new Error('already_cancelled');
+        err.code = 'already_cancelled';
+        throw err;
+      }
+      let cancellation;
+      try {
+        cancellation = await duffel('/air/order_cancellations', {
+          method: 'POST',
+          body: { order_id: orderId },
+        });
+      } catch (err) {
+        // A pending quote already exists → reuse the live one instead of failing.
+        if (err.code === 'upstream' && err.status === 422) {
+          const list = await duffel(`/air/order_cancellations?order_id=${orderId}`);
+          const now = Date.now();
+          cancellation = (Array.isArray(list) ? list : []).find(
+            (c) => !c.confirmed_at && (!c.expires_at || Date.parse(c.expires_at) > now),
+          );
+          if (!cancellation) throw err;
+        } else {
+          throw err;
+        }
+      }
+      return {
+        cancellation: {
+          id: cancellation.id,
+          refund_amount: cancellation.refund_amount,
+          refund_currency: cancellation.refund_currency,
+          expires_at: cancellation.expires_at,
+        },
+      };
+    }
+    case 'confirmCancel': {
+      // Step 2: confirm a previously quoted cancellation. Ownership is enforced
+      // via the cancellation's order_id → this user's duffelOrders subtree.
+      const cancellationId = body.cancellationId || '';
+      if (!CANCELLATION_ID_RE.test(cancellationId)) throw badRequest();
+      const quote = await duffel(`/air/order_cancellations/${cancellationId}`);
+      const owned = await ordersRef(uid).doc(quote.order_id || '').get();
+      if (!owned.exists) {
+        const err = new Error('not_found');
+        err.code = 'not_found';
+        throw err;
+      }
+      if (quote.confirmed_at) {
+        // Idempotent: already confirmed (e.g. a retried tap) — report success.
+        return {
+          cancellation: {
+            id: quote.id,
+            refund_amount: quote.refund_amount,
+            refund_currency: quote.refund_currency,
+          },
+        };
+      }
+      if (quote.expires_at && Date.parse(quote.expires_at) <= Date.now()) {
+        const err = new Error('quote_expired');
+        err.code = 'quote_expired';
+        throw err;
+      }
+      const confirmed = await duffel(
+        `/air/order_cancellations/${cancellationId}/actions/confirm`,
+        { method: 'POST' },
+      );
+      await ordersRef(uid).doc(quote.order_id).set(
+        { cancelled: true, refundAmount: confirmed.refund_amount, refundCurrency: confirmed.refund_currency },
+        { merge: true },
+      );
+      return {
+        cancellation: {
+          id: confirmed.id,
+          refund_amount: confirmed.refund_amount,
+          refund_currency: confirmed.refund_currency,
+        },
+      };
+    }
     default:
       throw badRequest();
   }
-}
-
-function badRequest() {
-  const err = new Error('bad_request');
-  err.code = 'bad_request';
-  return err;
 }
 
 const duffelApi = onRequest({ secrets: ['DUFFEL_API_KEY'], cors: true }, async (req, res) => {
@@ -228,6 +239,8 @@ const duffelApi = onRequest({ secrets: ['DUFFEL_API_KEY'], cors: true }, async (
     const code = err && err.code;
     if (code === 'bad_request') res.status(400).json({ error: 'bad_request' });
     else if (code === 'not_found') res.status(404).json({ error: 'not_found' });
+    else if (code === 'already_cancelled') res.status(409).json({ error: 'already_cancelled' });
+    else if (code === 'quote_expired') res.status(410).json({ error: 'quote_expired' });
     else if (code === 'unconfigured') res.status(503).json({ error: 'duffel_unconfigured' });
     else res.status(502).json({ error: 'upstream_error', details: err && err.details });
   }

@@ -120,7 +120,16 @@ export const useIris = create<IrisChatState>((set, get) => ({
     if (!pending) return;
     // Clear optimistically BEFORE awaiting so the card can't double-commit.
     useIrisRouter.getState().cancel();
-    const result = await pending.commit();
+    // A rejecting commit must never strand the ConfirmationCard's spinner or
+    // raise an unhandled rejection — surface the failure as a normal bubble.
+    // (Booking commits also resolve friendly strings themselves; this guards
+    // every other kind, e.g. a throwing calendar permission.)
+    let result: string;
+    try {
+      result = await pending.commit();
+    } catch {
+      result = "That didn't go through — nothing was changed. Please try again.";
+    }
     // Display-only: appending to apiMessages here would create two consecutive
     // assistant turns (the model's "prepared…" turn already ended the exchange),
     // which Anthropic rejects. The commit result shows in the transcript instead.

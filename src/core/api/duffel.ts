@@ -74,6 +74,30 @@ export async function cancelOrder(orderId: string) {
   }>('duffelApi', { op: 'cancelOrder', orderId });
 }
 
+// Two-step cancel used by IRIS: quote first (creates a PENDING Duffel
+// cancellation carrying the real refund amount — lapses harmlessly if never
+// confirmed), then confirm only after the user approves on the card.
+export async function quoteCancel(orderId: string) {
+  return authedPost<{
+    cancellation: {
+      id: string;
+      refund_amount?: string | null;
+      refund_currency?: string | null;
+      expires_at?: string;
+    };
+  }>('duffelApi', { op: 'quoteCancel', orderId });
+}
+
+export async function confirmCancel(cancellationId: string) {
+  return authedPost<{
+    cancellation: { id: string; refund_amount?: string | null; refund_currency?: string | null };
+  }>('duffelApi', { op: 'confirmCancel', cancellationId });
+}
+
+export async function listOrders() {
+  return authedPost<{ orders: DuffelOrderSummary[] }>('duffelApi', { op: 'listOrders' });
+}
+
 export function useMyOrders() {
   return useQuery({
     queryKey: ['duffelOrders'],

@@ -25,7 +25,7 @@ import { useIrisVoice } from '@/src/features/iris/voice/useIrisVoice';
 import { composeGreeting } from '@/src/core/ai/iris/agent';
 import { useIris } from '@/src/core/store/iris';
 import { useIrisMemory } from '@/src/core/store/irisMemory';
-import { useIrisRouter } from '@/src/core/store/irisRouter';
+import { TAP_ONLY_KINDS, useIrisRouter } from '@/src/core/store/irisRouter';
 
 // Spoken yes/no so hands-free voice can confirm a staged action without a tap.
 const AFFIRM = /^(yes|yeah|yep|yup|sure|ok(ay)?|confirm(ed)?|do it|go ahead|please do|correct|sounds good)\b/i;
@@ -72,8 +72,15 @@ export default function IrisScreen() {
         return null;
       };
       const trimmed = text.trim();
-      if (useIrisRouter.getState().pendingAction) {
+      const pending = useIrisRouter.getState().pendingAction;
+      if (pending) {
         if (AFFIRM.test(trimmed)) {
+          // Money-moving actions (booking/cancelling a flight) are committed
+          // ONLY by an explicit on-screen tap — a spoken "yes" is too easy to
+          // trigger accidentally for a purchase.
+          if (TAP_ONLY_KINDS.has(pending.kind)) {
+            return 'This one needs a tap — please confirm on the card so I know it’s really you.';
+          }
           await confirmPending();
           return lastAssistant();
         }

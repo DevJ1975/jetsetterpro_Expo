@@ -40,7 +40,8 @@ verifies the caller's Firebase ID token (`lib/auth.js`) and rate-limits per uid.
 | `aiIris` | HTTPS POST | Streaming Anthropic proxy (IRIS) | `ANTHROPIC_API_KEY` |
 | `flightData` | HTTPS GET | Flight status/position (cache-through) | `AERODATABOX_API_KEY`, `OPENSKY_*` (opt) |
 | `translate` | HTTPS POST | Google Cloud Translation v2 (ADC) | — (service account) |
-| `duffelApi` | HTTPS POST | Flight booking — offers/seats/orders/cancel (test mode) | `DUFFEL_API_KEY` |
+| `duffelApi` | HTTPS POST | Flight booking — offers/seats/orders/cancel + quote/confirm cancel (test mode) | `DUFFEL_API_KEY` |
+| `flightAgent` | HTTPS POST | Genkit (Claude) flight search-and-rank specialist behind IRIS's in-chat booking | `ANTHROPIC_API_KEY`, `DUFFEL_API_KEY` |
 | `disruptionWatch` | Schedule (10 min) | Diffs flight status → events + Expo push | `AERODATABOX_API_KEY`, `EXPO_ACCESS_TOKEN` (opt) |
 | `stateDept` | HTTPS GET | US State Dept travel advisories (Level 1–4), cached | — (public CC-BY) |
 
@@ -63,10 +64,25 @@ the app. Passport application status + STEP have no API and remain deep-links.
 `us-central1` and cap `maxInstances: 10`, so a traffic spike or abuse can't run
 up an unbounded Cloud Functions + upstream-API bill. `aiIris` overrides
 `timeoutSeconds: 300` (+ 512 MiB) so long streaming tool-use turns aren't cut at
-the 60 s default. Runtime is **Node 22** (`firebase.json` +
-`functions/package.json`). The per-uid rate limiter (`lib/rate.js`) is in-memory,
-so it resets per instance and is bounded by `maxInstances` — a shared
-(Firestore/Memorystore) limiter is the next step if abuse appears.
+the 60 s default; `flightAgent` overrides 120 s + 512 MiB and rate-limits at
+6/min per uid (each call = up to 4 Claude turns + 1–2 Duffel calls). Runtime is
+**Node 22** (`firebase.json` + `functions/package.json`). The per-uid rate
+limiter (`lib/rate.js`) is in-memory, so it resets per instance and is bounded
+by `maxInstances` — a shared (Firestore/Memorystore) limiter is the next step if
+abuse appears.
+
+**Genkit (server-side AI flows).** `functions/genkit.js` is a lazy, shared
+Genkit 1.39 runtime using the official `@genkit-ai/anthropic` plugin — same
+Claude models and allow-list as the `aiIris` proxy (this is a tooling layer,
+not a Gemini switch). It powers `flightAgent`: a single-shot search-and-rank
+flow whose tools (`searchFlights`, `getOfferDetails`) run server-side over
+`lib/duffelClient.js`, with a Zod output schema. The response's offers are
+joined from the REAL Duffel offers by id (`lib/rank.js`), so the model ranks
+but can never invent a price. `flightAgent` is read-only against Duffel;
+booking/cancel commits happen only via `duffelApi` after the user's explicit
+in-app confirmation tap (IRIS stages, the user's tap commits — the model never
+executes money mutations). `aiIris` deliberately stays a thin proxy: IRIS's
+own tool loop is client-owned (device-coupled tools + confirm-before-commit).
 
 ## One-time console setup (owner)
 
@@ -118,8 +134,10 @@ firebase functions:secrets:set EXPO_ACCESS_TOKEN     # optional — authenticate
 ```bash
 npm i -g firebase-tools && firebase login   # one-time
 npm run deploy:rules        # Firestore security rules
-npm run deploy:functions    # installs functions deps, deploys all 5 functions + scheduler
+npm run deploy:functions    # installs functions deps, deploys all functions + scheduler
 npm run deploy:backend      # both in one shot
+# Just the booking pair after IRIS-booking changes:
+#   firebase deploy --only functions:flightAgent,functions:duffelApi
 ```
 
 After the first `deploy:functions`, set the public base URL(s) in `.env.local`
