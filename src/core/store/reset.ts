@@ -5,6 +5,7 @@ import { useIrisMemory } from './irisMemory';
 import { useJournal } from './journal';
 import { useLoyalty } from './loyalty';
 import { useLuggage } from './luggage';
+import { useParking } from './parking';
 import { useTravel } from './travel';
 import { useVault } from './vault';
 import { useWallet } from './wallet';
@@ -25,5 +26,6 @@ export async function clearAllLocalData(): Promise<void> {
   useCheckIn.setState({ checkedIn: {}, seats: {} });
   useJournal.setState({ photos: {} });
   useLuggage.setState({ bags: [] });
+  useParking.setState({ spot: undefined });
   await useVault.getState().clearAll(); // metadata + Keychain document numbers
 }

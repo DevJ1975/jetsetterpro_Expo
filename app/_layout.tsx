@@ -138,6 +138,7 @@ function RootNavigator() {
         <Stack.Screen name="add-expense" options={{ presentation: 'modal' }} />
         <Stack.Screen name="add-bag" options={{ presentation: 'modal' }} />
         <Stack.Screen name="add-document" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="add-parking" options={{ presentation: 'modal' }} />
         <Stack.Screen name="add-identity" options={{ presentation: 'modal' }} />
         <Stack.Screen name="add-loyalty" options={{ presentation: 'modal' }} />
         <Stack.Screen name="add-wallet" options={{ presentation: 'modal' }} />

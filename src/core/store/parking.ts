@@ -1,0 +1,46 @@
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { zustandStorage } from '@/src/core/persistence/kv';
+
+// "Where did I park" — a single active parking spot (level/section/spot + an
+// optional photo, GPS pin, and note), saved before heading to the flight and
+// cleared on return. Mirrors the other local-first stores (luggage/loyalty):
+// the screen builds a fully-formed spot (id + createdAt stamped in the save
+// handler, never in render) and hands it to setSpot.
+
+export interface ParkingSpot {
+  id: string;
+  /** Garage level / floor, e.g. "Level 3" or "P2". */
+  level?: string;
+  /** Section / zone / row, e.g. "Blue" or "Row H". */
+  section?: string;
+  /** Specific stall, e.g. "H-14". */
+  spot?: string;
+  /** Free-text reminder ("near the elevator", "by the blue pillar"). */
+  note?: string;
+  /** expo-image-picker asset uri (stays on-device). */
+  photoUri?: string;
+  /** GPS pin captured at save time. */
+  coords?: { latitude: number; longitude: number };
+  /** Reverse-geocoded street address for the pin, if available. */
+  address?: string;
+  /** ISO timestamp the spot was saved. */
+  createdAt: string;
+}
+
+interface ParkingState {
+  spot?: ParkingSpot;
+  setSpot: (spot: ParkingSpot) => void;
+  clear: () => void;
+}
+
+export const useParking = create<ParkingState>()(
+  persist(
+    (set) => ({
+      spot: undefined,
+      setSpot: (spot) => set({ spot }),
+      clear: () => set({ spot: undefined }),
+    }),
+    { name: 'jetsetter_parking', storage: zustandStorage },
+  ),
+);

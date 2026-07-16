@@ -56,6 +56,7 @@ const CATALOG: Group[] = [
       { title: 'Airport Map', subtitle: 'Indoor wayfinding', icon: 'map', slug: 'airport-map' },
       { title: 'Identity & Trusted Traveler', subtitle: 'Digital ID · CLEAR · PreCheck', icon: 'card', slug: 'identity' },
       { title: 'Luggage Tracker', subtitle: 'AirTag & WorldTracer', icon: 'bag-handle', slug: 'luggage' },
+      { title: 'Where I Parked', subtitle: 'Save your parking spot', icon: 'car', slug: 'parking' },
     ],
   },
   {
@@ -94,6 +95,7 @@ export default function MoreScreen() {
   // Ported screens route directly; everything else lands on the shared "coming soon".
   const REAL_ROUTES: Record<string, string> = {
     iris: '/iris',
+    parking: '/parking',
     packing: '/packing',
     currency: '/currency',
     wallet: '/wallet',
