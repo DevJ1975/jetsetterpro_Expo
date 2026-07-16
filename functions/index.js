@@ -10,8 +10,15 @@
 // Deploy: firebase deploy --only functions   (Blaze plan required: outbound
 // HTTP + Cloud Scheduler). Set secrets with `firebase functions:secrets:set`.
 const admin = require('firebase-admin');
+const { setGlobalOptions } = require('firebase-functions/v2');
 
 admin.initializeApp();
+
+// Global runtime defaults for every function below. `maxInstances` is the key
+// cost guard for the beta: it bounds how many instances can spin up under a
+// traffic spike or abuse, capping worst-case Cloud Functions + upstream-API
+// spend. Region is pinned so functions and Firestore stay co-located.
+setGlobalOptions({ region: 'us-central1', maxInstances: 10 });
 
 exports.aiIris = require('./aiIris').aiIris;
 exports.flightData = require('./flightData').flightData;

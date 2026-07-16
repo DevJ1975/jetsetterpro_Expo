@@ -49,6 +49,15 @@ are keyed by flight+date and shared across all users, with phase-aware TTLs
 after arrival) and a monthly upstream-call budget that serves stale data rather
 than exceeding quota.
 
+**Runtime & cost guards** (`index.js` `setGlobalOptions`): all functions pin
+`us-central1` and cap `maxInstances: 10`, so a traffic spike or abuse can't run
+up an unbounded Cloud Functions + upstream-API bill. `aiIris` overrides
+`timeoutSeconds: 300` (+ 512 MiB) so long streaming tool-use turns aren't cut at
+the 60 s default. Runtime is **Node 22** (`firebase.json` +
+`functions/package.json`). The per-uid rate limiter (`lib/rate.js`) is in-memory,
+so it resets per instance and is bounded by `maxInstances` — a shared
+(Firestore/Memorystore) limiter is the next step if abuse appears.
+
 ## One-time console setup (owner)
 
 In the [Firebase console](https://console.firebase.google.com/project/jetsetter-pro):
@@ -64,6 +73,12 @@ In the [Firebase console](https://console.firebase.google.com/project/jetsetter-
 5. **Firestore TTL:** add a TTL policy on collection group `flightCache`, field
    `purgeAt` (console → Firestore → TTL, or
    `gcloud firestore fields ttls update purgeAt --collection-group=flightCache --enable-ttl`).
+6. **App Check (recommended before public beta):** register **App Attest** (iOS)
+   and **Play Integrity** (Android) under App Check, initialize `firebase/app-check`
+   in the client, and enforce it on the HTTPS functions. This attests requests
+   come from the genuine app, shielding the free-tier flight/AI budgets from
+   scripted abuse. Auth ID-token verification already gates every function; App
+   Check adds device attestation on top.
 
 ## Secrets (owner, once)
 

@@ -3,7 +3,7 @@
   "description": "Cloud Functions for JetSetter Pro (IRIS proxy, flight data, translation, Duffel booking, disruption watcher)",
   "private": true,
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "index.js",
   "scripts": {

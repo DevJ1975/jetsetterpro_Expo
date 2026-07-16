@@ -19,7 +19,16 @@ const MAX_TOKENS = 4096;
 
 const limited = makeLimiter(30, 60_000);
 
-const aiIris = onRequest({ secrets: ['ANTHROPIC_API_KEY'], cors: true }, async (req, res) => {
+const aiIris = onRequest(
+  {
+    secrets: ['ANTHROPIC_API_KEY'],
+    cors: true,
+    // Streaming tool-use turns can run well past the 60s default; give the SSE
+    // pipe room. 512MiB covers large tool payloads without over-provisioning.
+    timeoutSeconds: 300,
+    memory: '512MiB',
+  },
+  async (req, res) => {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'method_not_allowed' });
     return;
