@@ -2,8 +2,9 @@ import { DarkTheme, ThemeProvider } from 'expo-router/react-navigation';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import * as Notifications from 'expo-notifications';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useNavigationContainerRef, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { NavigationBar } from 'expo-navigation-bar';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -20,6 +21,8 @@ import { syncFlightWatches } from '@/src/core/firebase/flightWatches';
 import { reconcile } from '@/src/core/firebase/firestore';
 import { registerForPush } from '@/src/core/services/push';
 import { ErrorBoundary } from '@/src/features/common/ErrorBoundary';
+// Side-effect import runs the env-gated Sentry init before the app renders.
+import { navigationIntegration, Sentry } from '@/src/core/observability/sentry';
 import { Splash, palette } from '@/src/ui';
 import { fontAssets } from '@/src/ui/theme/fonts';
 
@@ -37,7 +40,14 @@ export const unstable_settings = { anchor: '(tabs)' };
 
 void SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
+function RootLayout() {
+  // Register the navigation container so Sentry can attach route breadcrumbs +
+  // performance spans (no-op when Sentry isn't configured).
+  const navRef = useNavigationContainerRef();
+  useEffect(() => {
+    if (navRef) navigationIntegration.registerNavigationContainer(navRef);
+  }, [navRef]);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
@@ -49,12 +59,20 @@ export default function RootLayout() {
               <RootNavigator />
             </ErrorBoundary>
             <StatusBar style="light" />
+            {/* Android 15 edge-to-edge: light nav-bar icons for the dark app
+                (no-op on iOS). setBackgroundColorAsync is removed under
+                edge-to-edge, so this declarative style is the supported path. */}
+            <NavigationBar style="light" />
           </ThemeProvider>
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
+
+// Sentry.wrap is a safe no-op when init was skipped (no DSN), so it's always
+// applied — it adds an error boundary + touch/perf instrumentation when active.
+export default Sentry.wrap(RootLayout);
 
 function useHydrated(): boolean {
   const prefs = usePreferences((s) => s._hasHydrated);

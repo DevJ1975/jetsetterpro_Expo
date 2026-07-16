@@ -94,6 +94,15 @@ In the [Firebase console](https://console.firebase.google.com/project/jetsetter-
    cost ≈ $0.
 2. **Authentication → Sign-in method:** enable **Anonymous** and **Email/Password**.
 3. **Firestore Database:** create it (production mode).
+3b. **Cloud Storage:** create the default bucket (Storage → Get started). User
+   media (vault document photos, parking-spot photos, journal photos) syncs to
+   `users/{uid}/…` and is protected by `firebase/storage.rules` (per-uid,
+   images only, &lt;10 MB). Deployed by `npm run deploy:rules`. Requires Blaze
+   (already required for functions). Confirm the bucket host in
+   `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET` matches the console — projects created
+   after ~Oct 2024 use `…firebasestorage.app`; older ones use `…appspot.com`,
+   and a mismatch fails uploads. Without a bucket, media stays local-only
+   (graceful fallback) and nothing breaks.
 4. **APIs:** enable the **Cloud Translation API** on the GCP project (one click;
    `translate` runs on the default functions service account via ADC — no key).
 5. **Firestore TTL:** add a TTL policy on collection group `flightCache`, field

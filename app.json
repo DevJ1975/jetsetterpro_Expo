@@ -85,6 +85,13 @@
       "expo-task-manager",
       "expo-background-task",
       [
+        "expo-navigation-bar",
+        {
+          "style": "light",
+          "enforceContrast": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",

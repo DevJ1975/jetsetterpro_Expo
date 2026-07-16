@@ -10,6 +10,7 @@ import { Screen } from '@/src/features/common/Screen';
 import { ModalHeader } from '@/src/features/common/ModalHeader';
 import { useSaveCelebration } from '@/src/features/common/SaveCelebration';
 import { makeId } from '@/src/core/format';
+import { uploadUserImage } from '@/src/core/firebase/storage';
 import { useParking } from '@/src/core/store/parking';
 
 export default function AddParkingScreen() {
@@ -29,6 +30,7 @@ export default function AddParkingScreen() {
   );
   const [address, setAddress] = useState<string | undefined>(existing?.address);
   const [locating, setLocating] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // Worth saving if any field is filled or a pin/photo was captured.
   const valid =
@@ -75,15 +77,23 @@ export default function AddParkingScreen() {
     if (!res.canceled && res.assets[0]) setPhotoUri(res.assets[0].uri);
   };
 
-  const save = () => {
-    if (!valid) return;
+  const save = async () => {
+    if (!valid || saving) return;
+    setSaving(true);
+    const id = existing?.id ?? makeId();
+    // Sync a newly-picked photo to Cloud Storage (survives reinstall); reuse the
+    // existing remote image when the photo is unchanged; local uri is the fallback.
+    const changedPhoto = photoUri && photoUri !== existing?.photoUri;
+    const stored = changedPhoto ? await uploadUserImage(photoUri, 'parking', id) : null;
     setSpot({
-      id: existing?.id ?? makeId(),
+      id,
       level: level.trim() || undefined,
       section: section.trim() || undefined,
       spot: stall.trim() || undefined,
       note: note.trim() || undefined,
       photoUri,
+      remoteUrl: stored?.url ?? (changedPhoto ? undefined : existing?.remoteUrl),
+      storagePath: stored?.path ?? (changedPhoto ? undefined : existing?.storagePath),
       coords,
       address,
       // Preserve the original save time when editing an existing spot.

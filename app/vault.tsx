@@ -201,9 +201,9 @@ function DocumentCard({
         {/* Photo thumb + actions */}
         <View style={{ alignItems: 'flex-end', gap: spacing.sm }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-            {doc.photoUri ? (
+            {doc.remoteUrl || doc.photoUri ? (
               <Image
-                source={{ uri: doc.photoUri }}
+                source={{ uri: doc.remoteUrl ?? doc.photoUri }}
                 style={{ width: 34, height: 34, borderRadius: 8, backgroundColor: palette.surface }}
                 contentFit="cover"
               />

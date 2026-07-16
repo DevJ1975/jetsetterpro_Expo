@@ -15,7 +15,8 @@ import { activeOrNextTrip, useTravel } from '@/src/core/store/travel';
 import { useJournal } from '@/src/core/store/journal';
 import { exifCaptureDate, usePhotoMeta } from '@/src/features/journal/photoMeta';
 import { ShareCard } from '@/src/features/journal/ShareCard';
-import { formatDate, formatDateRange, parseDate, toISODate } from '@/src/core/format';
+import { formatDate, formatDateRange, makeId, parseDate, toISODate } from '@/src/core/format';
+import { uploadUserImage } from '@/src/core/firebase/storage';
 
 // iOS TripJournalView parity: gradient hero, photos/days/active-days stats,
 // 3-col chronological grid, shareable summary card.
@@ -93,10 +94,15 @@ export default function JournalScreen() {
     });
     if (res.canceled) return;
     const fallback = toISODate();
-    const stamped = res.assets.map((a) => ({
-      uri: a.uri,
-      date: exifCaptureDate(a.exif) ?? fallback,
-    }));
+    // Sync each memory to Cloud Storage so the scrapbook survives a reinstall;
+    // the durable download URL becomes the stable key (dates + list), and the
+    // local uri is the fallback when Storage is unconfigured/offline.
+    const stamped = await Promise.all(
+      res.assets.map(async (a) => {
+        const stored = await uploadUserImage(a.uri, `journal/${trip.id}`, makeId());
+        return { uri: stored?.url ?? a.uri, date: exifCaptureDate(a.exif) ?? fallback };
+      }),
+    );
     stamped.sort((a, b) => a.date.localeCompare(b.date));
     setDates(Object.fromEntries(stamped.map((s) => [s.uri, s.date])));
     addPhotos(trip.id, stamped.map((s) => s.uri));

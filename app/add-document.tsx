@@ -9,6 +9,7 @@ import { Screen } from '@/src/features/common/Screen';
 import { ModalHeader } from '@/src/features/common/ModalHeader';
 import { Chips } from '@/src/features/common/Chips';
 import { makeId, toISODate } from '@/src/core/format';
+import { uploadUserImage } from '@/src/core/firebase/storage';
 import { DOC_COLORS } from '@/src/features/vaults/docStyle';
 import { DOC_META, DOC_TYPES, DocType, setDocNumber, useVault } from '@/src/core/store/vault';
 
@@ -33,6 +34,7 @@ export default function AddDocumentScreen() {
   // Lazy initializer — computed once on mount, not per render.
   const [expiry, setExpiry] = useState(defaultExpiry);
   const [photoUri, setPhotoUri] = useState<string | undefined>(undefined);
+  const [saving, setSaving] = useState(false);
 
   const expiryValid = !hasExpiry || DATE_RE.test(expiry.trim());
   const valid = name.trim().length > 0 && expiryValid;
@@ -48,10 +50,14 @@ export default function AddDocumentScreen() {
   };
 
   const save = async () => {
-    if (!valid) return;
+    if (!valid || saving) return;
+    setSaving(true);
     const id = makeId();
     const num = number.trim();
     if (num) await setDocNumber(id, num); // → encrypted keychain, never in plain storage
+    // Sync the photo to the user's private Cloud Storage so it survives a
+    // reinstall; the local uri stays as an offline/unconfigured fallback.
+    const stored = photoUri ? await uploadUserImage(photoUri, 'vault', id) : null;
     addMeta({
       id,
       type: docType,
@@ -59,6 +65,8 @@ export default function AddDocumentScreen() {
       expiry: hasExpiry ? expiry.trim() : undefined,
       hasNumber: num.length > 0,
       photoUri,
+      remoteUrl: stored?.url,
+      storagePath: stored?.path,
     });
     router.back();
   };
@@ -67,7 +75,7 @@ export default function AddDocumentScreen() {
 
   return (
     <Screen contentStyle={{ paddingHorizontal: spacing.xl, paddingBottom: spacing.xxxl }} edges={['top']}>
-      <ModalHeader title="Add Document" onSave={save} saveDisabled={!valid} />
+      <ModalHeader title="Add Document" onSave={save} saveDisabled={!valid || saving} />
       <Card style={{ gap: spacing.lg }}>
         <View style={{ gap: spacing.sm }}>
           <Text style={[type.overline, { color: '#8B92A8' }]}>Type</Text>

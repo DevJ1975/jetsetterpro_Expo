@@ -16,6 +16,26 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ? (['react-native-maps', { androidGoogleMapsApiKey: mapsKey }] as const)
       : plugin,
   );
+
+  // Sentry sourcemap-upload plugin — added only when the org/project slugs are
+  // provided at build time, so prebuild stays clean for owners without a Sentry
+  // project. The DSN is NOT here (it lives in EXPO_PUBLIC_SENTRY_DSN via
+  // Sentry.init); this plugin only configures build-time symbol upload, itself
+  // gated on SENTRY_AUTH_TOKEN. Runtime reporting works without it (traces are
+  // just unsymbolicated until an auth token is provided).
+  const sentryOrg = process.env.SENTRY_ORG;
+  const sentryProject = process.env.SENTRY_PROJECT;
+  if (sentryOrg && sentryProject) {
+    plugins.push([
+      '@sentry/react-native/expo',
+      {
+        url: process.env.SENTRY_URL ?? 'https://sentry.io/',
+        organization: sentryOrg,
+        project: sentryProject,
+      },
+    ] as never);
+  }
+
   return {
     ...config,
     name: config.name ?? 'JetSetter Pro',

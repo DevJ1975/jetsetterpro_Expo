@@ -3,7 +3,9 @@ import Constants from 'expo-constants';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Defs, RadialGradient as SvgRadialGradient, Stop } from 'react-native-svg';
-import { fonts, palette, spacing } from '@/src/ui';
+import { fonts, palette, radii, spacing } from '@/src/ui';
+import { BrandMesh } from '@/src/ui/components/BrandMesh';
+import { GlassPanel } from '@/src/ui/components/GlassPanel';
 import { GoldGradientText } from '@/src/features/onboarding/GoldGradientText';
 
 /**
@@ -15,6 +17,8 @@ export function BrandHero() {
   const version = Constants.nativeApplicationVersion ?? '1.0.0';
   return (
     <View style={styles.wrap}>
+      {/* Decorative liquid mesh behind the hero (iOS 26+; no-op elsewhere). */}
+      <BrandMesh opacity={0.4} style={{ borderRadius: radii.card }} />
       <View style={styles.badge}>
         <Svg width={96} height={96}>
           <Defs>
@@ -45,7 +49,9 @@ export function BrandHero() {
       />
 
       <Text style={styles.kicker}>YOUR EXECUTIVE TRAVEL COMPANION</Text>
-      <Text style={styles.version}>Version {version}</Text>
+      <GlassPanel style={styles.versionPill} fallbackStyle={styles.versionPillFallback}>
+        <Text style={styles.version}>Version {version}</Text>
+      </GlassPanel>
     </View>
   );
 }
@@ -75,8 +81,17 @@ const styles = StyleSheet.create({
     letterSpacing: 3,
     color: palette.dim,
   },
+  versionPill: {
+    borderRadius: radii.pill,
+    overflow: 'hidden',
+  },
+  versionPillFallback: {
+    borderRadius: radii.pill,
+  },
   version: {
     fontSize: 12,
     color: palette.faint,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 4,
   },
 });

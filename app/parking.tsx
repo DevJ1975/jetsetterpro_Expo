@@ -91,9 +91,9 @@ export default function ParkingScreen() {
             </View>
             {spot.note ? <Text style={type.bodyDim}>{spot.note}</Text> : null}
 
-            {spot.photoUri ? (
+            {spot.remoteUrl || spot.photoUri ? (
               <Image
-                source={{ uri: spot.photoUri }}
+                source={{ uri: spot.remoteUrl ?? spot.photoUri }}
                 style={{
                   width: '100%',
                   height: 200,

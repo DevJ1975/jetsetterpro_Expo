@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { zustandStorage } from '@/src/core/persistence/kv';
 import { secure } from '@/src/core/persistence/secure';
+import { deleteUserImage } from '@/src/core/firebase/storage';
 
 export type DocType = 'passport' | 'visa' | 'id' | 'insurance' | 'vaccination' | 'other';
 
@@ -13,6 +14,10 @@ export interface VaultDoc {
   hasNumber: boolean;
   /** Local uri of an attached photo of the physical document (image-picker). */
   photoUri?: string;
+  /** Cloud Storage download URL, once synced — survives reinstall/device change. */
+  remoteUrl?: string;
+  /** Cloud Storage object path, kept so the image can be deleted deterministically. */
+  storagePath?: string;
 }
 
 /** Offline emergency contact surfaced in Emergency Mode. */
@@ -65,12 +70,15 @@ export const useVault = create<VaultState>()(
       emergencyContact: undefined,
       addMeta: (d) => set({ docs: [...get().docs, d] }),
       remove: (id) => {
+        const doc = get().docs.find((x) => x.id === id);
         void removeDocNumber(id);
+        if (doc?.storagePath) void deleteUserImage(doc.storagePath);
         set({ docs: get().docs.filter((x) => x.id !== id) });
       },
       setEmergencyContact: (c) => set({ emergencyContact: c }),
       clearAll: async () => {
         await Promise.all(get().docs.map((d) => removeDocNumber(d.id)));
+        await Promise.all(get().docs.map((d) => deleteUserImage(d.storagePath)));
         set({ docs: [], emergencyContact: undefined });
       },
     }),
