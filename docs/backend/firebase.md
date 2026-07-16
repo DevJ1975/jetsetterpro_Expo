@@ -89,6 +89,18 @@ In the [Firebase console](https://console.firebase.google.com/project/jetsetter-
    come from the genuine app, shielding the free-tier flight/AI budgets from
    scripted abuse. Auth ID-token verification already gates every function; App
    Check adds device attestation on top.
+7. **Both-platform config (already wired at the JS level).** The app uses the JS
+   Firebase SDK, so **Auth + Firestore work on iOS and Android identically** from
+   `firebaseConfig` — no per-platform native file is required for them. Push is
+   split by design: **Android** uses FCM via `firebase/google-services.json`
+   (present + referenced in `app.json`); **iOS** uses Expo Push → APNs via
+   `eas credentials` (step 2 in §2 above), needing **no** `GoogleService-Info.plist`.
+   Only to adopt **App Check (App Attest)** / native Firebase on iOS: register an
+   **iOS app** (bundle `com.trainovate.jetsetterpro`) in the console, drop its
+   `GoogleService-Info.plist` into `firebase/`, add
+   `"ios": { "googleServicesFile": "./firebase/GoogleService-Info.plist" }` to
+   `app.json`, and set `EXPO_PUBLIC_FIREBASE_IOS_APP_ID` (the client already picks
+   the id per platform).
 
 ## Secrets (owner, once)
 
