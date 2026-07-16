@@ -31,7 +31,11 @@
   },
   "submit": {
     "production": {
+      "ios": {
+        "ascApiKeyPath": "./credentials/asc-api-key.p8"
+      },
       "android": {
+        "serviceAccountKeyPath": "./credentials/google-play-service-account.json",
         "track": "internal"
       }
     }
