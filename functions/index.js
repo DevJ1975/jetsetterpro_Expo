@@ -26,5 +26,6 @@ exports.flightData = require('./flightData').flightData;
 exports.translate = require('./translate').translate;
 exports.duffelApi = require('./duffel').duffelApi;
 exports.flightAgent = require('./flightAgent').flightAgent;
+exports.driveTime = require('./driveTime').driveTime;
 exports.disruptionWatch = require('./disruptionWatch').disruptionWatch;
 exports.stateDept = require('./stateDept').stateDept;

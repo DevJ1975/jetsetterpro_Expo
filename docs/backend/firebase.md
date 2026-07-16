@@ -42,6 +42,7 @@ verifies the caller's Firebase ID token (`lib/auth.js`) and rate-limits per uid.
 | `translate` | HTTPS POST | Google Cloud Translation v2 (ADC) | — (service account) |
 | `duffelApi` | HTTPS POST | Flights (offers/seats/orders/cancel + quote/confirm cancel), **Hotels** (Duffel Stays: search/quote/book/cancel), **Cars** (Duffel Cars: search/quote/book/cancel) — all test mode | `DUFFEL_API_KEY` |
 | `flightAgent` | HTTPS POST | Genkit (Claude) flight search-and-rank specialist behind IRIS's in-chat booking | `ANTHROPIC_API_KEY`, `DUFFEL_API_KEY` |
+| `driveTime` | HTTPS POST | Live traffic drive time (Google Routes) current location → departure airport; powers the "leave by" strip | `GOOGLE_ROUTES_API_KEY` |
 | `disruptionWatch` | Schedule (10 min) | Diffs flight status → events + Expo push | `AERODATABOX_API_KEY`, `EXPO_ACCESS_TOKEN` (opt) |
 | `stateDept` | HTTPS GET | US State Dept travel advisories (Level 1–4), cached | — (public CC-BY) |
 
@@ -59,6 +60,16 @@ from CI/agents) — confirm against a live call on first deploy; the normalizer
 tolerates several shapes and logs a warning on mismatch. The CC-BY attribution
 ("U.S. Department of State, Bureau of Consular Affairs") is returned and shown in
 the app. Passport application status + STEP have no API and remain deep-links.
+
+**Passive travel-day monitoring.** Gate changes, delays, and cancellations are
+already diffed and pushed by the scheduled `disruptionWatch`. The `driveTime`
+function adds live traffic (Google Routes, `TRAFFIC_AWARE`) from the traveler's
+last-known location to their departure airport (resolved via the bundled
+`lib/airports.js` IATA table), which the home "leave by" strip now reflects when
+the Routes key is set and a location fix is available (it never prompts — uses
+`getLastKnownPositionAsync`). A future step (owner deploy) is to fold drive-time
++ TSA into `disruptionWatch` so a scheduled pass can emit a single "leave now"
+push; the client already has the pieces (location, TSA heuristic, leave-by math).
 
 **Runtime & cost guards** (`index.js` `setGlobalOptions`): all functions pin
 `us-central1` and cap `maxInstances: 10`, so a traffic spike or abuse can't run
@@ -139,6 +150,7 @@ firebase functions:secrets:set DUFFEL_API_KEY        # booking — flights, hote
 firebase functions:secrets:set OPENSKY_CLIENT_ID     # optional — richer live positions
 firebase functions:secrets:set OPENSKY_CLIENT_SECRET # optional
 firebase functions:secrets:set EXPO_ACCESS_TOKEN     # optional — authenticated Expo push
+firebase functions:secrets:set GOOGLE_ROUTES_API_KEY # optional — live "leave by" traffic (Routes API; SERVER key, NOT the Android Maps key)
 ```
 
 ## Deploy (owner's machine — needs Google auth, can't run in CI/agents)
