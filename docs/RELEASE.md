@@ -71,6 +71,19 @@ Check in → Wallet pass → log an expense (scan receipt) → IRIS chat →
 trigger a disruption push. Verify maps render, fonts are the rounded brand
 face, and the tab bar blur looks right.
 
+**⚠️ Two SDK-57 build gates to confirm on this first build:**
+1. **`expo-speech-recognition` (IRIS hands-free voice).** It has no SDK-57
+   release yet (pinned `^56.0.1`), so this build is the first proof it compiles
+   against RN 0.86 / New Architecture. Exercise the mic button in IRIS. If the
+   **build fails** on this module, remove it (`npm rm expo-speech-recognition`)
+   and delete its `expo-speech-recognition` plugin entry from `app.json` — the
+   app already degrades gracefully (`isVoiceSupported` → false, voice shows
+   "needs a development build", nothing crashes); re-add once a 57.x ships.
+2. **Android 15 edge-to-edge.** SDK 57 / RN 0.86 enforce edge-to-edge on API 35.
+   On the Android device, confirm no screen draws content under the status or
+   navigation bar (top and bottom insets), especially the tab bar, modals, and
+   the IRIS composer.
+
 ## 4. Production builds → stores
 
 **iOS (TestFlight):**
