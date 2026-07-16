@@ -6,7 +6,7 @@ import { Alert, Linking, Platform, Pressable, Text, View } from 'react-native';
 import { Button, Card, palette, radii, spacing, type } from '@/src/ui';
 import { Screen } from '@/src/features/common/Screen';
 import { BackHeader } from '@/src/features/common/BackHeader';
-import { EmptyState } from '@/src/features/common/EmptyState';
+import { ParkingCone } from '@/src/features/parking/ParkingCone';
 import { useParking } from '@/src/core/store/parking';
 
 /** Human "Saved …" label from a stored ISO timestamp. Pure (deterministic from
@@ -63,23 +63,29 @@ export default function ParkingScreen() {
       />
 
       {!spot ? (
-        <Card variant="glass">
-          <EmptyState
-            icon="car"
-            title="No parking saved"
-            subtitle="Before you head to your flight, save where you left the car — level, row, a photo, and a pin you can navigate back to."
-            actionLabel="Save parking spot"
-            onAction={() => router.push('/add-parking')}
-          />
+        <Card
+          variant="glass"
+          style={{ alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xl }}
+        >
+          <ParkingCone size={116} />
+          <Text style={[type.title, { textAlign: 'center' }]}>No parking saved</Text>
+          <Text style={[type.bodyDim, { textAlign: 'center' }]}>
+            Before you head to your flight, save where you left the car — level, row, a photo, and a
+            pin you can navigate back to.
+          </Text>
+          <Button title="Save parking spot" onPress={() => router.push('/add-parking')} />
         </Card>
       ) : (
         <View style={{ gap: spacing.lg }}>
           <Card style={{ gap: spacing.md }}>
-            {primaryLine ? (
-              <Text style={type.display}>{primaryLine}</Text>
-            ) : (
-              <Text style={type.sub}>Parking spot</Text>
-            )}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+              <ParkingCone size={40} />
+              {primaryLine ? (
+                <Text style={[type.display, { flex: 1 }]}>{primaryLine}</Text>
+              ) : (
+                <Text style={[type.sub, { flex: 1 }]}>Parking spot</Text>
+              )}
+            </View>
             {spot.note ? <Text style={type.bodyDim}>{spot.note}</Text> : null}
 
             {spot.photoUri ? (
