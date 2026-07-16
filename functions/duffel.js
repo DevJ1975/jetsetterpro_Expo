@@ -30,6 +30,8 @@ const {
   ORDER_ID_RE,
   CANCELLATION_ID_RE,
 } = require('./lib/duffelClient');
+const stays = require('./lib/stays');
+const cars = require('./lib/cars');
 
 const limited = makeLimiter(15, 60_000);
 
@@ -217,6 +219,30 @@ async function handle(uid, body) {
         },
       };
     }
+    // ── Stays (hotels) ──
+    case 'searchStays':
+      return stays.searchStays(body);
+    case 'quoteStay':
+      return stays.quoteStay(body);
+    case 'bookStay':
+      return stays.bookStay(uid, body);
+    case 'cancelStay':
+      return stays.cancelStay(uid, body);
+    case 'listStays':
+      return stays.listStays(uid);
+
+    // ── Cars (rental) ──
+    case 'searchCars':
+      return cars.searchCars(body);
+    case 'quoteCar':
+      return cars.quoteCar(body);
+    case 'bookCar':
+      return cars.bookCar(uid, body);
+    case 'cancelCar':
+      return cars.cancelCar(uid, body);
+    case 'listCars':
+      return cars.listCars(uid);
+
     default:
       throw badRequest();
   }

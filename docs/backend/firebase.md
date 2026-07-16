@@ -40,7 +40,7 @@ verifies the caller's Firebase ID token (`lib/auth.js`) and rate-limits per uid.
 | `aiIris` | HTTPS POST | Streaming Anthropic proxy (IRIS) | `ANTHROPIC_API_KEY` |
 | `flightData` | HTTPS GET | Flight status/position (cache-through) | `AERODATABOX_API_KEY`, `OPENSKY_*` (opt) |
 | `translate` | HTTPS POST | Google Cloud Translation v2 (ADC) | — (service account) |
-| `duffelApi` | HTTPS POST | Flight booking — offers/seats/orders/cancel + quote/confirm cancel (test mode) | `DUFFEL_API_KEY` |
+| `duffelApi` | HTTPS POST | Flights (offers/seats/orders/cancel + quote/confirm cancel), **Hotels** (Duffel Stays: search/quote/book/cancel), **Cars** (Duffel Cars: search/quote/book/cancel) — all test mode | `DUFFEL_API_KEY` |
 | `flightAgent` | HTTPS POST | Genkit (Claude) flight search-and-rank specialist behind IRIS's in-chat booking | `ANTHROPIC_API_KEY`, `DUFFEL_API_KEY` |
 | `disruptionWatch` | Schedule (10 min) | Diffs flight status → events + Expo push | `AERODATABOX_API_KEY`, `EXPO_ACCESS_TOKEN` (opt) |
 | `stateDept` | HTTPS GET | US State Dept travel advisories (Level 1–4), cached | — (public CC-BY) |
@@ -132,7 +132,10 @@ In the [Firebase console](https://console.firebase.google.com/project/jetsetter-
 ```bash
 firebase functions:secrets:set ANTHROPIC_API_KEY     # IRIS (required for live AI)
 firebase functions:secrets:set AERODATABOX_API_KEY   # flight data (RapidAPI → AeroDataBox Basic, free)
-firebase functions:secrets:set DUFFEL_API_KEY        # booking (Duffel test-mode token)
+firebase functions:secrets:set DUFFEL_API_KEY        # booking — flights, hotels (Stays), cars (Cars); Duffel test-mode token
+# NOTE: Duffel Cars (launched 2026) may need enabling on your Duffel account.
+# Until then car ops return an upstream error and IRIS shows the honest
+# "not available" state; flights + hotels work regardless.
 firebase functions:secrets:set OPENSKY_CLIENT_ID     # optional — richer live positions
 firebase functions:secrets:set OPENSKY_CLIENT_SECRET # optional
 firebase functions:secrets:set EXPO_ACCESS_TOKEN     # optional — authenticated Expo push

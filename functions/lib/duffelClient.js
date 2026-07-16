@@ -43,6 +43,12 @@ function ordersRef(uid) {
   return admin.firestore().collection('users').doc(uid).collection('duffelOrders');
 }
 
+/** Per-user Firestore subcollection for a Duffel product's bookings. */
+function bookingsRef(uid, product) {
+  // product: 'staysBookings' | 'carsBookings'
+  return admin.firestore().collection('users').doc(uid).collection(product);
+}
+
 function badRequest() {
   const err = new Error('bad_request');
   err.code = 'bad_request';
@@ -98,6 +104,7 @@ async function searchOffersOp(body) {
 module.exports = {
   duffel,
   ordersRef,
+  bookingsRef,
   badRequest,
   searchOffersOp,
   IATA_RE,

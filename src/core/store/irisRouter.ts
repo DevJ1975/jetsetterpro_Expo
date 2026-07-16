@@ -14,11 +14,22 @@ export type PendingKind =
   | 'submitExpenses'
   | 'addToCalendar'
   | 'bookFlight'
-  | 'cancelBooking';
+  | 'cancelBooking'
+  | 'bookHotel'
+  | 'cancelHotel'
+  | 'bookCar'
+  | 'cancelCar';
 
 /** Money-moving kinds: the confirmation must be an explicit on-screen tap —
  *  hands-free voice "yes" is not accepted for these. */
-export const TAP_ONLY_KINDS: ReadonlySet<PendingKind> = new Set(['bookFlight', 'cancelBooking']);
+export const TAP_ONLY_KINDS: ReadonlySet<PendingKind> = new Set([
+  'bookFlight',
+  'cancelBooking',
+  'bookHotel',
+  'cancelHotel',
+  'bookCar',
+  'cancelCar',
+]);
 
 export interface PendingAction {
   id: string;

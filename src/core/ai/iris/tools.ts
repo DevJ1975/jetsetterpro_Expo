@@ -5,6 +5,28 @@ import { confirmCancel, createOrder, getOffer, listOrders, quoteCancel } from '@
 import { convertCurrency } from '@/src/core/api/exchange';
 import { assessConnection } from '@/src/core/connections';
 import { searchFlightsViaAgent } from '@/src/core/api/flightAgent';
+import {
+  bookCar,
+  bookStay,
+  cancelCar,
+  cancelStay,
+  listCars,
+  listStays,
+  quoteCar,
+  quoteStay,
+  searchCars,
+  searchStays,
+} from '@/src/core/api/travelBookings';
+import { geocodePlace } from '@/src/core/services/geocode';
+import {
+  describeProductBookings,
+  formatCarResults,
+  formatStayResults,
+  summarizeCarForConfirm,
+  summarizeStayForConfirm,
+  validateDriver,
+  validateGuest,
+} from '@/src/core/ai/iris/travelBooking';
 import { cToF, fetchWeather } from '@/src/core/api/weather';
 import { formatDateRange, makeId, toISODate } from '@/src/core/format';
 import { queryClient } from '@/src/core/query';
@@ -28,8 +50,13 @@ import {
 
 const IATA_RE = /^[A-Z]{3}$/;
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const ISO_TIME_RE = /^\d{2}:\d{2}$/;
 const OFFER_ID_RE = /^off_[A-Za-z0-9]+$/;
 const ORDER_ID_RE = /^ord_[A-Za-z0-9]+$/;
+const SSR_ID_RE = /^ssr_[A-Za-z0-9]+$/;
+const RATE_ID_RE = /^rat_[A-Za-z0-9]+$/;
+const STAY_BK_RE = /^sbk_[A-Za-z0-9]+$/;
+const CAR_BK_RE = /^cbk_[A-Za-z0-9]+$/;
 
 const BOOKING_NOT_CONNECTED =
   "Flight booking isn't connected in this build yet — it activates when the backend is deployed. The classic Book screen has provider links meanwhile.";
@@ -298,6 +325,101 @@ export const IRIS_TOOLS: ToolSchema[] = [
       },
       required: ['layoverMinutes'],
     },
+  },
+  {
+    name: 'searchHotels',
+    description:
+      'Search real bookable hotels near a place for given dates (Duffel Stays, test mode). Read-only.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        location: { type: 'string', description: 'City, neighborhood or landmark, e.g. "Paris near the Louvre".' },
+        checkIn: { type: 'string', description: 'yyyy-MM-dd' },
+        checkOut: { type: 'string', description: 'yyyy-MM-dd' },
+        guests: { type: 'number', description: 'Number of adult guests (default 1).' },
+      },
+      required: ['location', 'checkIn', 'checkOut'],
+    },
+  },
+  {
+    name: 'bookHotel',
+    description:
+      'Prepare a hotel booking (staged — the user confirms; nothing is charged by this call). Requires the guest identity.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        searchResultId: { type: 'string', description: 'An ssr_… id from searchHotels.' },
+        givenName: { type: 'string' },
+        familyName: { type: 'string' },
+        email: { type: 'string' },
+        phone: { type: 'string', description: 'With country code, e.g. +14155550123.' },
+        specialRequests: { type: 'string', description: 'Optional free-text request.' },
+      },
+      required: ['searchResultId', 'givenName', 'familyName', 'email', 'phone'],
+    },
+  },
+  {
+    name: 'cancelHotel',
+    description: 'Prepare a hotel-booking cancellation (staged — the user confirms).',
+    input_schema: {
+      type: 'object',
+      properties: { bookingId: { type: 'string', description: 'An sbk_… id from listMyStays.' } },
+      required: ['bookingId'],
+    },
+  },
+  {
+    name: 'listMyStays',
+    description: "The user's existing hotel bookings (read-only).",
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'searchCars',
+    description:
+      'Search real bookable rental cars at a pickup place for given dates/times (Duffel Cars, test mode). Read-only.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        pickupLocation: { type: 'string', description: 'Airport or city for pickup, e.g. "LAX" or "downtown Denver".' },
+        dropoffLocation: { type: 'string', description: 'Optional; defaults to the pickup location.' },
+        pickupDate: { type: 'string', description: 'yyyy-MM-dd' },
+        pickupTime: { type: 'string', description: 'HH:mm (24h)' },
+        dropoffDate: { type: 'string', description: 'yyyy-MM-dd' },
+        dropoffTime: { type: 'string', description: 'HH:mm (24h)' },
+        driverAge: { type: 'number', description: "Driver's age (affects young-driver fees)." },
+      },
+      required: ['pickupLocation', 'pickupDate', 'pickupTime', 'dropoffDate', 'dropoffTime'],
+    },
+  },
+  {
+    name: 'bookCar',
+    description:
+      'Prepare a rental-car booking (staged — the user confirms; nothing is charged by this call). Requires the driver identity incl. date of birth.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        rateId: { type: 'string', description: 'A rat_… id from searchCars.' },
+        givenName: { type: 'string' },
+        familyName: { type: 'string' },
+        bornOn: { type: 'string', description: 'Driver date of birth, yyyy-MM-dd.' },
+        email: { type: 'string' },
+        phone: { type: 'string', description: 'With country code.' },
+      },
+      required: ['rateId', 'givenName', 'familyName', 'bornOn', 'email', 'phone'],
+    },
+  },
+  {
+    name: 'cancelCar',
+    description: 'Prepare a rental-car cancellation (staged — the user confirms).',
+    input_schema: {
+      type: 'object',
+      properties: { bookingId: { type: 'string', description: 'A cbk_… id from listMyCars.' } },
+      required: ['bookingId'],
+    },
+  },
+  {
+    name: 'listMyCars',
+    description: "The user's existing rental-car bookings (read-only).",
+    input_schema: { type: 'object', properties: {} },
   },
 ];
 
@@ -646,6 +768,185 @@ export async function executeIrisTool(
       return {
         content: `CONNECTION (${label}): ~${a.transferMinutes} min needed vs a ${a.layoverMinutes} min layover (${a.bufferMinutes >= 0 ? '+' : ''}${a.bufferMinutes} min slack). ${a.advice}`,
       };
+    }
+
+    case 'searchHotels': {
+      if (!isBackendConfigured()) return { content: BOOKING_NOT_CONNECTED };
+      const location = str(input, 'location') ?? '';
+      const checkIn = str(input, 'checkIn') ?? '';
+      const checkOut = str(input, 'checkOut') ?? '';
+      if (!location) return { content: 'Where should I look for hotels?', isError: true };
+      if (!ISO_DATE_RE.test(checkIn) || !ISO_DATE_RE.test(checkOut))
+        return { content: 'Check-in and check-out must be yyyy-MM-dd.', isError: true };
+      const geo = await geocodePlace(location);
+      if (!geo) return { content: `I couldn't locate "${location}". Try a nearby city or landmark.` };
+      try {
+        const guests = num(input, 'guests');
+        const { results } = await searchStays({
+          latitude: geo.latitude,
+          longitude: geo.longitude,
+          checkInDate: checkIn,
+          checkOutDate: checkOut,
+          guests: guests && guests > 1 ? Array.from({ length: Math.min(4, guests) }, () => ({ type: 'adult' })) : undefined,
+        });
+        return { content: formatStayResults(results, location) };
+      } catch (e) {
+        return { content: bookingApiError(e) };
+      }
+    }
+
+    case 'bookHotel': {
+      if (!isBackendConfigured()) return { content: BOOKING_NOT_CONNECTED };
+      const searchResultId = str(input, 'searchResultId') ?? '';
+      if (!SSR_ID_RE.test(searchResultId))
+        return { content: 'Need the ssr_… hotel id the user chose from searchHotels.', isError: true };
+      const v = validateGuest(input);
+      if (!v.ok)
+        return { content: `Cannot book yet — ${v.problems.join('; ')}. Ask the user for the details.`, isError: true };
+      try {
+        const { quote } = await quoteStay(searchResultId);
+        const summary = summarizeStayForConfirm(quote, v.guest, 'your destination');
+        return stage(
+          'bookHotel',
+          summary,
+          async () => {
+            try {
+              const { booking } = await bookStay(quote.id, { ...v.guest });
+              void queryClient.invalidateQueries({ queryKey: ['duffelOrders'] });
+              return `Booked! Confirmation ${booking.reference ?? booking.id} (test mode — no charge).`;
+            } catch (e) {
+              return `The hotel booking didn't go through — ${bookingApiError(e)}`;
+            }
+          },
+          `Prepared: hotel for ${v.guest.given_name} ${v.guest.family_name}, ${quote.amount ?? ''} ${quote.currency ?? ''}. Ask the user to confirm on the card — nothing is charged yet.`,
+        );
+      } catch (e) {
+        return { content: bookingApiError(e) };
+      }
+    }
+
+    case 'cancelHotel': {
+      if (!isBackendConfigured()) return { content: BOOKING_NOT_CONNECTED };
+      const bookingId = str(input, 'bookingId') ?? '';
+      if (!STAY_BK_RE.test(bookingId))
+        return { content: 'Need the sbk_… hotel booking id from listMyStays.', isError: true };
+      return stage(
+        'cancelHotel',
+        `Cancel hotel booking ${bookingId}`,
+        async () => {
+          try {
+            await cancelStay(bookingId);
+            void queryClient.invalidateQueries({ queryKey: ['duffelOrders'] });
+            return 'Hotel booking cancelled.';
+          } catch (e) {
+            return `The cancellation didn't go through — ${bookingApiError(e)}`;
+          }
+        },
+        `Prepared: cancel ${bookingId}. Ask the user to confirm on the card — nothing is cancelled yet.`,
+      );
+    }
+
+    case 'listMyStays': {
+      if (!isBackendConfigured()) return { content: BOOKING_NOT_CONNECTED };
+      try {
+        const { bookings } = await listStays();
+        return { content: describeProductBookings(bookings, 'hotel') };
+      } catch (e) {
+        return { content: bookingApiError(e) };
+      }
+    }
+
+    case 'searchCars': {
+      if (!isBackendConfigured()) return { content: BOOKING_NOT_CONNECTED };
+      const pickupLocation = str(input, 'pickupLocation') ?? '';
+      const pickupDate = str(input, 'pickupDate') ?? '';
+      const pickupTime = str(input, 'pickupTime') ?? '';
+      const dropoffDate = str(input, 'dropoffDate') ?? '';
+      const dropoffTime = str(input, 'dropoffTime') ?? '';
+      if (!pickupLocation) return { content: 'Where should I look for rental cars?', isError: true };
+      if (!ISO_DATE_RE.test(pickupDate) || !ISO_DATE_RE.test(dropoffDate))
+        return { content: 'Pickup and drop-off dates must be yyyy-MM-dd.', isError: true };
+      if (!ISO_TIME_RE.test(pickupTime) || !ISO_TIME_RE.test(dropoffTime))
+        return { content: 'Pickup and drop-off times must be HH:mm (24h).', isError: true };
+      const pickup = await geocodePlace(pickupLocation);
+      if (!pickup) return { content: `I couldn't locate "${pickupLocation}".` };
+      const dropoffLoc = str(input, 'dropoffLocation');
+      const dropoff = dropoffLoc ? await geocodePlace(dropoffLoc) : undefined;
+      try {
+        const { results } = await searchCars({
+          pickup,
+          dropoff: dropoff ?? undefined,
+          pickupDate,
+          pickupTime,
+          dropoffDate,
+          dropoffTime,
+          driverAge: num(input, 'driverAge'),
+        });
+        return { content: formatCarResults(results, pickupLocation) };
+      } catch (e) {
+        return { content: bookingApiError(e) };
+      }
+    }
+
+    case 'bookCar': {
+      if (!isBackendConfigured()) return { content: BOOKING_NOT_CONNECTED };
+      const rateId = str(input, 'rateId') ?? '';
+      if (!RATE_ID_RE.test(rateId))
+        return { content: 'Need the rat_… car id the user chose from searchCars.', isError: true };
+      const v = validateDriver(input);
+      if (!v.ok)
+        return { content: `Cannot book yet — ${v.problems.join('; ')}. Ask the user for the details.`, isError: true };
+      try {
+        const { quote } = await quoteCar(rateId);
+        const summary = summarizeCarForConfirm(quote, v.driver, 'the pickup location');
+        return stage(
+          'bookCar',
+          summary,
+          async () => {
+            try {
+              const { booking } = await bookCar(quote.id, { ...v.driver });
+              void queryClient.invalidateQueries({ queryKey: ['duffelOrders'] });
+              return `Booked! Confirmation ${booking.reference ?? booking.id} (test mode — no charge).`;
+            } catch (e) {
+              return `The car booking didn't go through — ${bookingApiError(e)}`;
+            }
+          },
+          `Prepared: rental car for ${v.driver.given_name} ${v.driver.family_name}, ${quote.amount ?? ''} ${quote.currency ?? ''}. Ask the user to confirm on the card — nothing is charged yet.`,
+        );
+      } catch (e) {
+        return { content: bookingApiError(e) };
+      }
+    }
+
+    case 'cancelCar': {
+      if (!isBackendConfigured()) return { content: BOOKING_NOT_CONNECTED };
+      const bookingId = str(input, 'bookingId') ?? '';
+      if (!CAR_BK_RE.test(bookingId))
+        return { content: 'Need the cbk_… car booking id from listMyCars.', isError: true };
+      return stage(
+        'cancelCar',
+        `Cancel rental-car booking ${bookingId}`,
+        async () => {
+          try {
+            await cancelCar(bookingId);
+            void queryClient.invalidateQueries({ queryKey: ['duffelOrders'] });
+            return 'Rental-car booking cancelled.';
+          } catch (e) {
+            return `The cancellation didn't go through — ${bookingApiError(e)}`;
+          }
+        },
+        `Prepared: cancel ${bookingId}. Ask the user to confirm on the card — nothing is cancelled yet.`,
+      );
+    }
+
+    case 'listMyCars': {
+      if (!isBackendConfigured()) return { content: BOOKING_NOT_CONNECTED };
+      try {
+        const { bookings } = await listCars();
+        return { content: describeProductBookings(bookings, 'car') };
+      } catch (e) {
+        return { content: bookingApiError(e) };
+      }
     }
 
     default:

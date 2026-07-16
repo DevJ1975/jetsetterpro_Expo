@@ -151,6 +151,10 @@ const KIND_META: Record<PendingKind, { icon: string; label: string }> = {
   addToCalendar: { icon: 'calendar', label: 'Add to Calendar' },
   bookFlight: { icon: 'airplane', label: 'Book flight' },
   cancelBooking: { icon: 'close-circle', label: 'Cancel booking' },
+  bookHotel: { icon: 'bed', label: 'Book hotel' },
+  cancelHotel: { icon: 'close-circle', label: 'Cancel hotel' },
+  bookCar: { icon: 'car-sport', label: 'Book car' },
+  cancelCar: { icon: 'close-circle', label: 'Cancel car' },
 };
 
 export function ConfirmationCard() {

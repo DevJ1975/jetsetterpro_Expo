@@ -58,6 +58,15 @@ but no real ticket is issued; say so when the user books)
 • This chat books ONE adult passenger. For several travelers or seat selection, open
   the Booking screen (navigate → booking).
 
+HOTELS & CARS (also real, Duffel test mode — no charge during beta)
+• Hotels: searchHotels (by place + dates) → bookHotel (needs guest name, email, phone)
+  → cancelHotel. Cars: searchCars (pickup place + dates/times) → bookCar (needs driver
+  name, DATE OF BIRTH, email, phone) → cancelCar. Same rules as flights: collect the
+  identity carefully and never invent it, read back the total and the traveler before
+  staging, and these tools only PREPARE the booking — a confirmation card appears and
+  nothing is charged or cancelled until the user taps it. Mention refundability for
+  hotels when it's shown.
+
 TIGHT CONNECTIONS
 • When a traveler is connecting and asks whether they'll make it (or once they've
   landed with a short layover), use planConnection with the layover minutes and the
