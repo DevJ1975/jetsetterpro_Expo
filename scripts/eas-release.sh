@@ -138,6 +138,37 @@ submit_android() {
   echo "${GREEN}    Android submitted to the 'internal' track. Add testers + complete the Data safety form.${RESET}"
 }
 
+# ==========================================================================
+# ANDROID BETA — free internal-distribution APK + shareable install link.
+#   The fastest tester path: no Apple/Play accounts, no store review, works on a
+#   free Expo account. Produces a build-page link (QR + download) any Android
+#   phone can install after allowing "install unknown apps". See docs/BETA.md.
+# ==========================================================================
+android_beta() {
+  step "ANDROID BETA — internal-distribution build (free path)"
+  maps_check
+  info "Runs: eas build --profile preview --platform android"
+  info "When it finishes, share the build-page link the CLI prints (QR + install)."
+  confirm "Start a REMOTE Android beta build (uses one EAS build; free tier has a monthly quota)?"
+  eas build --profile preview --platform android
+  echo "${GREEN}    Android beta built. Send the build-page link to testers (see docs/BETA.md).${RESET}"
+}
+
+# ==========================================================================
+# iOS DEVICE REGISTER — capture a tester's iPhone UDID for ad-hoc beta.
+#   Requires the Apple Developer Program (\$99/yr). Prints a URL/QR the tester
+#   opens ON THEIR IPHONE to install a profile. Do this once per device BEFORE
+#   `eas build --platform ios`. Not billable. See docs/BETA.md.
+# ==========================================================================
+ios_register() {
+  step "iOS DEVICE REGISTER — eas device:create"
+  warn "Needs an active Apple Developer Program membership (\$99/yr)."
+  info "Runs: eas device:create  — share the printed link with your tester."
+  confirm "Open the iOS device-registration flow?"
+  eas device:create
+  echo "${GREEN}    After testers register, build with: eas build --profile preview --platform ios${RESET}"
+}
+
 # Local, non-remote sanity check (no builds, no store calls, not billable).
 doctor() {
   step "Local sanity — whoami + resolved config (no remote build)"
@@ -154,16 +185,23 @@ doctor() {
 usage() {
   cat <<EOF
 ${BOLD}JetSetter Pro — EAS release driver${RESET}
+  ${BOLD}Closed beta — send testers an install link (see docs/BETA.md):${RESET}
+  ./scripts/eas-release.sh android-beta   Free Android internal build + shareable link
+  ./scripts/eas-release.sh ios-register   Register a tester iPhone (needs Apple Dev Program)
+  ${BOLD}Store release (see docs/RELEASE.md):${RESET}
   ./scripts/eas-release.sh preview        Step 1: device-QA build, both platforms
   ./scripts/eas-release.sh ios            Step 2: production iOS build + TestFlight submit
   ./scripts/eas-release.sh android        Step 3: production Android build (first release)
   ./scripts/eas-release.sh android-submit         Android submit (after 1st manual upload)
+  ${BOLD}Utility:${RESET}
   ./scripts/eas-release.sh doctor         Local whoami + config check (no builds)
   ./scripts/eas-release.sh all            Steps 1 -> 2 -> 3 in order (each gated)
 EOF
 }
 
 case "${1:-menu}" in
+  android-beta)   android_beta ;;
+  ios-register)   ios_register ;;
   preview)        qa_preview ;;
   ios)            release_ios ;;
   android)        build_android ;;
@@ -173,8 +211,10 @@ case "${1:-menu}" in
   menu|"")
     usage
     echo
-    read -r -p "Select [preview/ios/android/android-submit/doctor/quit]: " choice
+    read -r -p "Select [android-beta/ios-register/preview/ios/android/android-submit/doctor/quit]: " choice
     case "$choice" in
+      android-beta) android_beta ;;
+      ios-register) ios_register ;;
       preview) qa_preview ;;
       ios) release_ios ;;
       android) build_android ;;
