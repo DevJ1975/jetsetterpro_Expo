@@ -5,23 +5,41 @@ built on **Expo SDK 56** (React Native 0.85, React 19.2, New Architecture). A si
 codebase reaching feature parity with the iOS app, on a **Firebase** backend
 (Auth + Cloud Firestore, per-user `users/{uid}/trips` + `users/{uid}/expenses`).
 
-## Status
+## Status — iOS-parity, production beta
 
-- ✅ Expo SDK 56 + expo-router (file-based) app shell, dark-first
-- ✅ Design system from `src/ui` (the shipped JetSetter kit: tokens + components)
-- ✅ 5-tab navigation: Home · Itinerary · IRIS · Expenses · More
-- ✅ Onboarding → profile / home-airport / currency
-- ✅ Firebase anonymous-first auth + two-way trips/expenses sync (Firestore)
-- ✅ Local-first Zustand stores (AsyncStorage-persisted) + demo/mock mode
-- ✅ IRIS assistant — chat + hands-free voice loop + staged, confirm-before-commit
-  tools (check-in, log expense, add trip, packing, calendar); live via the `aiIris`
-  Cloud Function (Anthropic key server-side), demo responses until it's deployed
-- ✅ Feature modules: Document Vault (Keychain-backed), Wallet/passes, Loyalty,
-  Luggage, Trip Journal, Translator phrasebook, Local Experiences (OpenStreetMap),
-  Currency/FX, Weather, Visa & country essentials, Packing, Disruption/EU261
-  compensation, Departure optimizer, In-Flight, Carbon
-- ✅ Native targets: Flight Live Activity (`modules/`, `targets/` via apple-targets)
-- ✅ Unit tests (`jest-expo`) for the core logic
+Full look + feature parity with the native iOS app, wired to live APIs for a
+production beta on TestFlight + Google Play closed testing. Provider keys live
+server-side in Firebase Cloud Functions; everything degrades gracefully when the
+backend isn't deployed. See `docs/RELEASE.md` for the store runbook and
+`docs/backend/firebase.md` for backend setup.
+
+**Design system** — theme ported 1:1 from `JetsetterTheme.swift` (Nunito rounded
+brand face, exact palette/radii, glass `.jetCard()` cards, blur tab bar) plus the
+signature components: `SplitFlapText`, `AnimatedCounter`, `CardAppear`,
+`ProgressRing`, `StarField`, `SuccessAnimation`, animated `Splash`.
+
+**Live backend** (`functions/`) — `aiIris` (Anthropic), `flightData` (AeroDataBox
+behind a provider adapter, shared Firestore cache), `translate` (Google Cloud
+Translation via ADC), `duffelApi` (in-app flight booking, test mode),
+`disruptionWatch` (scheduled status watcher → Expo push). On-device receipt OCR
+(ML Kit); TSA-wait heuristic.
+
+**Screens** — every iOS feature area: Home hero flight card, Flight Tracker +
+map, split-flap Departure Board, In-Flight sensor mode (barometer + GPS),
+Check-In flow, Disruption dashboard, Departure optimizer, Airport map wayfinding,
+Ground transport, Apple-Wallet-style boarding passes, Itinerary + PDF417 scanner,
+Intelligence history, Expenses (chart + scan + mileage) + provider export,
+Currency donut/budget, Document Vault + Emergency Mode, Identity hub, Loyalty
+catalog, Luggage detail, Packing, Journal share-card, Translator (live MT),
+Essentials, Visa + Schengen calculator, Local experiences, in-app Booking
+(Duffel), Rental, Carbon, Offline kit, paged Onboarding, full Settings + Loved
+Ones, Paywall, About tour.
+
+- ✅ Firebase anonymous-first auth + two-way Firestore sync; disruption push + flight-watch mirror
+- ✅ Local-first Zustand stores (AsyncStorage-persisted)
+- ✅ IRIS assistant — chat + hands-free voice + confirm-before-commit tools + learned profile
+- ✅ Native targets: Flight Live Activity (`modules/`, `targets/`)
+- ✅ Unit tests (`jest-expo`) — 172 tests over the ported core logic
 
 ## Getting started
 

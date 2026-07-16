@@ -1,14 +1,24 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import { Text, View } from 'react-native';
-import { Button, Card, palette, spacing, type } from '@/src/ui';
-import { IrisOrb } from './components';
+import { Button, palette, radii, spacing, type } from '@/src/ui';
+import { IRIS_SPECTRUM, IrisOrb } from './components';
 import { evaluateSuggestions } from '@/src/core/ai/iris/triggers';
 import { useNow } from '@/src/core/useNow';
 import { useCheckIn } from '@/src/core/store/checkin';
 import { useIris } from '@/src/core/store/iris';
 import { useIrisSuggestions } from '@/src/core/store/irisSuggestions';
 import { useTravel } from '@/src/core/store/travel';
+
+// The iOS card (IRISSuggestionCardView.swift) frames itself in the IRIS
+// rainbow: a 1px spectrum border at half opacity around a near-black body,
+// with the rainbow orb leading the header.
+const BORDER_SPECTRUM = IRIS_SPECTRUM.map((c) => `${c}80`) as unknown as readonly [
+  string,
+  string,
+  ...string[],
+];
 
 /** The top proactive IRIS suggestion for the current context (self-hides when none). */
 export function IrisSuggestionCard() {
@@ -35,17 +45,31 @@ export function IrisSuggestionCard() {
   };
 
   return (
-    <Card variant="glass" style={{ marginBottom: spacing.lg, gap: spacing.md }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <IrisOrb size={20} />
-        <Text style={[type.overline, { color: palette.bright }]}>IRIS · Suggestion</Text>
+    <LinearGradient
+      colors={BORDER_SPECTRUM}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 0 }}
+      style={{ borderRadius: radii.card, padding: 1, marginBottom: spacing.lg }}
+    >
+      <View
+        style={{
+          borderRadius: radii.card - 1,
+          backgroundColor: '#0D0F17',
+          padding: spacing.lg,
+          gap: spacing.md,
+        }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <IrisOrb size={20} />
+          <Text style={[type.overline, { color: palette.bright }]}>IRIS · Suggestion</Text>
+        </View>
+        <Text style={type.sub}>{suggestion.title}</Text>
+        <Text style={type.bodyDim}>{suggestion.body}</Text>
+        <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs }}>
+          <Button title="Talk to IRIS" size="md" onPress={talk} />
+          <Button title="Not now" variant="ghost" size="md" onPress={() => dismiss(suggestion.dismissalKey)} />
+        </View>
       </View>
-      <Text style={type.sub}>{suggestion.title}</Text>
-      <Text style={type.bodyDim}>{suggestion.body}</Text>
-      <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs }}>
-        <Button title="Talk to IRIS" size="md" onPress={talk} />
-        <Button title="Not now" variant="ghost" size="md" onPress={() => dismiss(suggestion.dismissalKey)} />
-      </View>
-    </Card>
+    </LinearGradient>
   );
 }

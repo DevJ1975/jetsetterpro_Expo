@@ -9,5 +9,16 @@ service cloud.firestore {
     match /users/{uid}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
+
+    // Flat mirror of upcoming itinerary flights so the scheduled
+    // disruptionWatch function can query them server-side. Each doc is
+    // owned by its uid field; the doc id is `{uid}_{IDENT}_{YYYY-MM-DD}`.
+    match /flightWatches/{watchId} {
+      allow read, delete: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow create, update: if request.auth != null && request.resource.data.uid == request.auth.uid;
+    }
+
+    // flightCache/**, usage/**, meta/** have no match on purpose —
+    // client-denied; Cloud Functions use the Admin SDK (bypasses rules).
   }
 }

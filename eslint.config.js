@@ -6,6 +6,7 @@ module.exports = defineConfig([
   expoConfig,
   {
     // functions/ is Node (Cloud Functions) — linted by its own toolchain.
-    ignores: ['dist/*', 'functions/*'],
+    // scripts/ are Node build tooling; *.generated.ts are vendored artifacts.
+    ignores: ['dist/*', 'functions/*', 'scripts/*', '**/*.generated.ts'],
   },
 ]);

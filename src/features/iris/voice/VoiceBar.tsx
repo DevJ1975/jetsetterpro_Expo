@@ -1,7 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
-import { Animated, Pressable, Text, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { Pressable, Text, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import { palette, radii, spacing, type } from '@/src/ui';
+import { useReduceMotion } from '@/src/core/useReduceMotion';
 import { IrisOrb } from '@/src/features/iris/components';
 import type { IrisVoice, VoiceState } from './useIrisVoice';
 
@@ -22,7 +30,16 @@ export function MicButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} disabled={disabled} hitSlop={8} style={{ paddingBottom: 6 }}>
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      hitSlop={8}
+      style={{ paddingBottom: 6 }}
+      accessibilityRole="button"
+      accessibilityLabel={active ? 'Stop voice input' : 'Start voice input'}
+      accessibilityHint={active ? 'Ends the hands-free voice session' : 'Talk to IRIS hands-free'}
+      accessibilityState={{ disabled }}
+    >
       <Ionicons
         name={active ? 'stop-circle' : 'mic-outline'}
         size={32}
@@ -37,24 +54,23 @@ export function MicButton({
  * while IRIS is speaking barges in (jumps straight back to listening).
  */
 export function VoiceBar({ voice }: { voice: IrisVoice }) {
-  const [pulse] = useState(() => new Animated.Value(1));
+  const reduce = useReduceMotion();
+  const scale = useSharedValue(1);
   const active = voice.state === 'listening' || voice.state === 'speaking';
 
   useEffect(() => {
-    if (!active) {
-      pulse.stopAnimation();
-      pulse.setValue(1);
+    if (!active || reduce) {
+      scale.value = 1;
       return;
     }
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1.35, duration: 650, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1, duration: 650, useNativeDriver: true }),
-      ]),
+    scale.value = withRepeat(
+      withSequence(withTiming(1.35, { duration: 650 }), withTiming(1, { duration: 650 })),
+      -1,
+      false,
     );
-    loop.start();
-    return () => loop.stop();
-  }, [active, pulse]);
+  }, [active, reduce, scale]);
+
+  const orbStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   if (voice.state === 'idle') return null;
 
@@ -77,7 +93,7 @@ export function VoiceBar({ voice }: { voice: IrisVoice }) {
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-        <Animated.View style={{ transform: [{ scale: pulse }] }}>
+        <Animated.View style={orbStyle}>
           <IrisOrb size={16} />
         </Animated.View>
         <Text style={[type.overline, { color: palette.bright, flex: 1 }]}>

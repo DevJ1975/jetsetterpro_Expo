@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useRef, useState } from 'react';
+import { BottomTabBarHeightContext } from 'expo-router/tabs';
+import React, { useCallback, useContext, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -18,12 +19,13 @@ import {
   MessageBubble,
   ThinkingDots,
 } from '@/src/features/iris/components';
+import { LearningPrompt } from '@/src/features/iris/LearningPrompt';
 import { MicButton, VoiceBar } from '@/src/features/iris/voice/VoiceBar';
 import { useIrisVoice } from '@/src/features/iris/voice/useIrisVoice';
 import { composeGreeting } from '@/src/core/ai/iris/agent';
 import { useIris } from '@/src/core/store/iris';
 import { useIrisMemory } from '@/src/core/store/irisMemory';
-import { useIrisRouter } from '@/src/core/store/irisRouter';
+import { TAP_ONLY_KINDS, useIrisRouter } from '@/src/core/store/irisRouter';
 
 // Spoken yes/no so hands-free voice can confirm a staged action without a tap.
 const AFFIRM = /^(yes|yeah|yep|yup|sure|ok(ay)?|confirm(ed)?|do it|go ahead|please do|correct|sounds good)\b/i;
@@ -70,8 +72,15 @@ export default function IrisScreen() {
         return null;
       };
       const trimmed = text.trim();
-      if (useIrisRouter.getState().pendingAction) {
+      const pending = useIrisRouter.getState().pendingAction;
+      if (pending) {
         if (AFFIRM.test(trimmed)) {
+          // Money-moving actions (booking/cancelling a flight) are committed
+          // ONLY by an explicit on-screen tap — a spoken "yes" is too easy to
+          // trigger accidentally for a purchase.
+          if (TAP_ONLY_KINDS.has(pending.kind)) {
+            return 'This one needs a tap — please confirm on the card so I know it’s really you.';
+          }
           await confirmPending();
           return lastAssistant();
         }
@@ -98,6 +107,10 @@ export default function IrisScreen() {
     }, [stopVoice]),
   );
 
+  // iOS floats the tab bar over a blur; keep the composer above it.
+  const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
+  const floatingInset = Platform.OS === 'ios' ? tabBarHeight : 0;
+
   const canSend = draft.trim().length > 0 && !isResponding && !voiceActive;
   // Don't let voice start mid-way through a typed turn — its reply read-back
   // would race the streaming response.
@@ -117,18 +130,39 @@ export default function IrisScreen() {
           title="IRIS"
           right={
             <View style={{ flexDirection: 'row', gap: spacing.lg }}>
-              <Pressable onPress={clear} hitSlop={10}>
+              <Pressable
+                onPress={clear}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="New chat"
+                accessibilityHint="Clears this conversation and starts a new one"
+              >
                 <Ionicons name="create-outline" size={24} color={palette.bright} />
               </Pressable>
-              <Pressable onPress={() => router.push('/iris/memory')} hitSlop={10}>
+              <Pressable
+                onPress={() => router.push('/iris/memory')}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Saved memories"
+                accessibilityHint="Review what IRIS remembers about you"
+              >
                 <Ionicons name="bookmark-outline" size={24} color={palette.bright} />
+              </Pressable>
+              <Pressable
+                onPress={() => router.push('/iris/profile')}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Learned profile"
+                accessibilityHint="Review the preferences IRIS has learned"
+              >
+                <Ionicons name="sparkles-outline" size={24} color={palette.bright} />
               </Pressable>
             </View>
           }
         />
 
         <KeyboardAvoidingView
-          style={{ flex: 1 }}
+          style={{ flex: 1, paddingBottom: floatingInset }}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={8}
         >
@@ -139,6 +173,8 @@ export default function IrisScreen() {
             onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
             keyboardShouldPersistTaps="handled"
           >
+            <LearningPrompt />
+
             {messages.length === 0 && !isResponding ? (
               <Text style={[type.bodyDim, { marginTop: spacing.md }]}>{composeGreeting(knownPrefs)}</Text>
             ) : null}
@@ -198,7 +234,15 @@ export default function IrisScreen() {
               onSubmitEditing={dispatch}
               returnKeyType="send"
             />
-            <Pressable onPress={dispatch} disabled={!canSend} hitSlop={8} style={{ paddingBottom: 6 }}>
+            <Pressable
+              onPress={dispatch}
+              disabled={!canSend}
+              hitSlop={8}
+              style={{ paddingBottom: 6 }}
+              accessibilityRole="button"
+              accessibilityLabel="Send message"
+              accessibilityState={{ disabled: !canSend }}
+            >
               <Ionicons
                 name="arrow-up-circle"
                 size={36}

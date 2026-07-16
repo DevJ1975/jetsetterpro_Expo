@@ -7,12 +7,16 @@ export type PaletteKey =
   | 'accent'
   | 'bright'
   | 'deep'
+  | 'blueMuted'
+  | 'primaryDeep'
   | 'ink'
   | 'bgMid'
   | 'bgDeep'
+  | 'background'
   | 'surface'
   | 'surfaceGlass'
   | 'elevated'
+  | 'elevated2'
   | 'text'
   | 'dim'
   | 'faint'
@@ -21,6 +25,7 @@ export type PaletteKey =
   | 'bad'
   | 'line'
   | 'lineStrong'
+  | 'separator'
   | 'fillAccent'
   | 'fillGood'
   | 'fillWarn'
@@ -31,10 +36,17 @@ export type PaletteKey =
 
 export const palette: Record<PaletteKey, string>;
 // Tuple type (min 2 stops) so it satisfies expo-linear-gradient's `colors` prop.
+export type GradientStops = readonly [string, string, ...string[]];
 export const gradients: Record<
-  'hero' | 'brand' | 'progress' | 'goldText',
-  readonly [string, string, ...string[]]
->;
+  'hero' | 'brand' | 'progress' | 'goldText' | 'cardBorder' | 'cardInnerGlow',
+  GradientStops
+> & { brandLocations: readonly [number, number, ...number[]] };
+
+export const fonts: {
+  rounded: Record<'regular' | 'medium' | 'semibold' | 'bold' | 'extrabold', string>;
+  mono: string;
+};
+export const fontAssets: Record<string, number>;
 
 export type TypeKey =
   | 'display'
@@ -62,6 +74,7 @@ export const Button: ComponentType<{
   size?: 'lg' | 'md' | 'sm';
   icon?: ReactNode;
   disabled?: boolean;
+  loading?: boolean;
   style?: StyleProp<ViewStyle>;
 }>;
 
@@ -108,10 +121,78 @@ export const ProgressBar: ComponentType<{
   style?: StyleProp<ViewStyle>;
 }>;
 
-export const TabBar: ComponentType<{
-  tabs: { key: string; label: string; icon?: (active: boolean) => ReactNode }[];
-  activeKey: string;
-  onChange: (key: string) => void;
+export const SectionLabel: ComponentType<{ children: ReactNode; style?: StyleProp<ViewStyle> }>;
+
+export type HapticKind =
+  | 'light' | 'medium' | 'heavy' | 'soft' | 'rigid'
+  | 'selection' | 'success' | 'warning' | 'error';
+export const PressableScale: ComponentType<
+  {
+    children?: ReactNode;
+    style?: StyleProp<ViewStyle>;
+    scaleTo?: number;
+    dimTo?: number;
+    haptic?: HapticKind;
+  } & Record<string, unknown>
+>;
+
+export const Skeleton: ComponentType<{
+  width?: number | string;
+  height?: number;
+  radius?: number;
+  style?: StyleProp<ViewStyle>;
 }>;
 
-export const SectionLabel: ComponentType<{ children: ReactNode; style?: StyleProp<ViewStyle> }>;
+// ── Signature components (iOS UI/Components ports) ─────────────────────────
+
+export const SplitFlapText: ComponentType<{
+  text: string;
+  characterWidth?: number;
+  characterHeight?: number;
+  fontSize?: number;
+  tint?: string;
+  background?: string;
+  staggerDelay?: number;
+  stepDuration?: number;
+}>;
+
+export type CounterFormat = 'integer' | { decimal: number } | { currency: string };
+export const AnimatedCounter: ComponentType<{
+  target: number;
+  duration?: number;
+  format?: CounterFormat;
+  style?: StyleProp<TextStyle>;
+}>;
+export function formatCounterValue(value: number, format: CounterFormat): string;
+
+export const CardAppear: ComponentType<{
+  children?: ReactNode;
+  delay?: number;
+  style?: StyleProp<ViewStyle>;
+}>;
+
+export const ProgressRing: ComponentType<{
+  progress: number;
+  size?: number;
+  strokeWidth?: number;
+  color?: string;
+  trackColor?: string;
+  children?: ReactNode;
+  style?: StyleProp<ViewStyle>;
+}>;
+
+export const StarField: ComponentType<{ count?: number; seed?: number }>;
+
+export const SuccessAnimation: ComponentType<{
+  title: string;
+  subtitle: string;
+  referenceNumber?: string | null;
+  onDismiss: () => void;
+}>;
+
+export const Splash: ComponentType<{ onDone: () => void }>;
+
+export const FLAP_ALPHABET: readonly string[];
+export function normalizeFlapChar(char: string): string;
+export function nextFlapChar(current: string): string;
+export function flapDistance(current: string, target: string): number;

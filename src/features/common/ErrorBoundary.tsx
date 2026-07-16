@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { Button, palette, spacing, type } from '@/src/ui';
+import { Sentry } from '@/src/core/observability/sentry';
 
 interface Props {
   children: React.ReactNode;
@@ -20,8 +21,12 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    // Breadcrumb for local debugging / future crash-reporting hook.
     console.error('[ErrorBoundary]', error, info.componentStack);
+    // Report to Sentry when configured (no-op otherwise) with the React
+    // component stack attached for triage.
+    Sentry.captureException(error, {
+      contexts: { react: { componentStack: info.componentStack } },
+    });
   }
 
   reset = () => this.setState({ error: null });

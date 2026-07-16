@@ -1,178 +1,246 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
+import { useQuery } from '@tanstack/react-query';
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
-import { Card, Input, SectionLabel, palette, radii, spacing, type } from '@/src/ui';
+import { ActivityIndicator, Linking, ScrollView, Text, View } from 'react-native';
+import { SectionLabel, palette, spacing, type } from '@/src/ui';
 import { Screen } from '@/src/features/common/Screen';
 import { BackHeader } from '@/src/features/common/BackHeader';
 import { EmptyState } from '@/src/features/common/EmptyState';
+import { PremiumGate } from '@/src/features/common/PremiumGate';
+import { useNow } from '@/src/core/useNow';
 import { activeOrNextTrip, useTravel } from '@/src/core/store/travel';
-import { formatDistance, usePlaces, type Place, type PlaceCategory } from '@/src/core/api/places';
+import {
+  isOpenNow,
+  sectionExperiences,
+  useCityCoords,
+  useExperiences,
+  type Experience,
+  type LatLon,
+} from '@/src/features/local/experiences';
+import { ExperienceCard } from '@/src/features/local/ExperienceCard';
 
-type CatKey = PlaceCategory | 'events';
-const CATEGORIES: { key: CatKey; label: string; icon: string }[] = [
-  { key: 'restaurants', label: 'Restaurants', icon: 'restaurant' },
-  { key: 'attractions', label: 'Attractions', icon: 'camera' },
-  { key: 'cafes', label: 'Cafés', icon: 'cafe' },
-  { key: 'nightlife', label: 'Nightlife', icon: 'wine' },
-  { key: 'shopping', label: 'Shopping', icon: 'bag-handle' },
-  { key: 'events', label: 'Events', icon: 'calendar' },
-];
+type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
 function mapsUrl(q: string): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 }
 
-export default function LocalExperiencesScreen() {
+/** RIGHT NOW / TONIGHT / THIS TRIP header + horizontal card carousel. */
+function ExperienceSection({
+  icon,
+  title,
+  items,
+  now,
+  onOpen,
+}: {
+  icon: IoniconName;
+  title: string;
+  items: Experience[];
+  now: number;
+  onOpen: (e: Experience) => void;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <View style={{ marginBottom: spacing.xl }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
+          paddingHorizontal: spacing.xl,
+        }}
+      >
+        <Ionicons name={icon} size={12} color={palette.bright} />
+        <SectionLabel style={{ flex: 1, marginBottom: 0 }}>{title}</SectionLabel>
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingHorizontal: spacing.xl,
+          paddingTop: spacing.md,
+          gap: spacing.md,
+        }}
+      >
+        {items.map((e) => (
+          <ExperienceCard
+            key={e.id}
+            experience={e}
+            openNow={isOpenNow(e.openingHours, new Date(now))}
+            onOpen={() => onOpen(e)}
+          />
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
+interface DeviceLocation {
+  status: 'denied' | 'granted';
+  coords?: LatLon;
+  city?: string;
+}
+
+/** Permission-aware device location. Only prompts when `mayPrompt` (the user
+ *  tapped "Use my location"); the initial pass just reads the current grant. */
+async function resolveDeviceLocation(mayPrompt: boolean): Promise<DeviceLocation> {
+  try {
+    const perm = mayPrompt
+      ? await Location.requestForegroundPermissionsAsync()
+      : await Location.getForegroundPermissionsAsync();
+    if (perm.status !== Location.PermissionStatus.GRANTED) return { status: 'denied' };
+    const pos = await Location.getCurrentPositionAsync({});
+    const coords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+    let city: string | undefined;
+    try {
+      const places = await Location.reverseGeocodeAsync({
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+      });
+      city = places[0]?.city ?? places[0]?.region ?? undefined;
+    } catch {
+      // City label is cosmetic — coordinates already drive the feed.
+    }
+    return { status: 'granted', coords, city };
+  } catch {
+    return { status: 'denied' };
+  }
+}
+
+function LocalBody() {
   const trips = useTravel((s) => s.trips);
-  const suggested = useMemo(() => activeOrNextTrip(trips)?.destination ?? '', [trips]);
-  const [dest, setDest] = useState(suggested);
-  const [cat, setCat] = useState<CatKey | null>(null);
+  const trip = useMemo(() => activeOrNextTrip(trips), [trips]);
+  const now = useNow(60_000);
 
-  const liveCat = cat && cat !== 'events' ? cat : null;
-  const query = usePlaces(dest.trim() || undefined, liveCat);
+  // Location fallback when there's no trip to anchor on (iOS gates the feed on
+  // being at the destination; without a trip we anchor on the device instead).
+  // attempt > 0 → the user asked, so the permission prompt may be shown.
+  const [attempt, setAttempt] = useState(0);
+  const deviceLoc = useQuery({
+    queryKey: ['local-device-location', attempt],
+    queryFn: () => resolveDeviceLocation(attempt > 0),
+    enabled: !trip,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
 
-  const openPlace = (p: Place) => {
-    Linking.openURL(mapsUrl(`${p.name}, ${dest.trim()}`)).catch(() => {});
+  const geo = useCityCoords(trip?.destination);
+  const coords = trip ? (geo.data ?? null) : (deviceLoc.data?.coords ?? null);
+  const locCity = deviceLoc.data?.city ?? null;
+  const query = useExperiences(coords ? { lat: coords.lat, lon: coords.lon } : undefined);
+
+  const sections = useMemo(
+    () => (query.data ? sectionExperiences(query.data) : null),
+    [query.data],
+  );
+
+  const cityLabel = trip ? trip.destination.split(',')[0].trim() : (locCity ?? '');
+
+  const openPlace = (e: Experience) => {
+    const q = cityLabel ? `${e.name}, ${cityLabel}` : e.name;
+    Linking.openURL(mapsUrl(q)).catch(() => {});
   };
-  const searchAll = (label: string) => {
-    if (!dest.trim()) return;
-    Linking.openURL(mapsUrl(`${label} in ${dest.trim()}`)).catch(() => {});
+  const searchMaps = () => {
+    if (!cityLabel) return;
+    Linking.openURL(mapsUrl(`things to do in ${cityLabel}`)).catch(() => {});
   };
 
-  const select = (key: CatKey) => {
-    if (!dest.trim()) return;
-    setCat(key);
-  };
+  // ── Gates ──────────────────────────────────────────────────────────────────
 
-  // Clearing the destination invalidates the selected category — otherwise the
-  // disabled query renders a "undefined nearby" results card with no rows.
-  const onDestChange = (v: string) => {
-    setDest(v);
-    if (!v.trim()) setCat(null);
-  };
+  if (!trip && deviceLoc.data?.status !== 'granted') {
+    return (
+      <View style={{ paddingHorizontal: spacing.xl }}>
+        {deviceLoc.isLoading ? (
+          <View style={{ paddingVertical: spacing.xxl, alignItems: 'center' }}>
+            <ActivityIndicator color={palette.bright} />
+          </View>
+        ) : (
+          <EmptyState
+            icon="location"
+            title="Not at your destination yet"
+            subtitle="Local experiences unlock once you have a trip — or share your location to explore what's around you now."
+            actionLabel="Use my location"
+            onAction={() => setAttempt((a) => a + 1)}
+          />
+        )}
+      </View>
+    );
+  }
+
+  if ((trip && geo.isLoading) || query.isLoading) {
+    return (
+      <View style={{ paddingVertical: spacing.xxl, alignItems: 'center', gap: spacing.md }}>
+        <ActivityIndicator color={palette.bright} />
+        <Text style={type.bodyDim}>
+          Finding experiences {cityLabel ? `near ${cityLabel}` : 'near you'}…
+        </Text>
+      </View>
+    );
+  }
+
+  const empty =
+    !sections ||
+    (sections.rightNow.length === 0 &&
+      sections.tonight.length === 0 &&
+      sections.thisTrip.length === 0);
+
+  if (query.isError || (trip && !geo.isLoading && !coords) || empty) {
+    return (
+      <View style={{ paddingHorizontal: spacing.xl, gap: spacing.md }}>
+        <EmptyState
+          icon={query.isError ? 'cloud-offline' : 'sparkles'}
+          title={query.isError ? 'Couldn’t load live places' : 'No recommendations yet'}
+          subtitle={
+            cityLabel
+              ? `Nothing surfaced around ${cityLabel} right now. Try Google Maps instead.`
+              : 'Nothing surfaced nearby right now.'
+          }
+          actionLabel={cityLabel ? 'Search on Google Maps' : undefined}
+          onAction={cityLabel ? searchMaps : undefined}
+        />
+      </View>
+    );
+  }
 
   return (
-    <Screen contentStyle={{ paddingHorizontal: spacing.xl, paddingBottom: spacing.xxxl }}>
-      <BackHeader overline="Restaurants · attractions · nightlife" title="Local Experiences" />
+    <View>
+      <ExperienceSection
+        icon="flash"
+        title="Right now"
+        items={sections.rightNow}
+        now={now}
+        onOpen={openPlace}
+      />
+      <ExperienceSection
+        icon="moon"
+        title="Tonight"
+        items={sections.tonight}
+        now={now}
+        onOpen={openPlace}
+      />
+      <ExperienceSection
+        icon="calendar"
+        title="This trip"
+        items={sections.thisTrip}
+        now={now}
+        onOpen={openPlace}
+      />
+      <Text style={[type.caption, { textAlign: 'center', paddingHorizontal: spacing.xl }]}>
+        Live places from OpenStreetMap{cityLabel ? ` around ${cityLabel}` : ''}. Tap a card to open
+        it in Maps.
+      </Text>
+    </View>
+  );
+}
 
-      <Card variant="glass" style={{ marginBottom: spacing.lg }}>
-        <SectionLabel>Where</SectionLabel>
-        <Input label="Destination" placeholder="Tokyo, Japan" value={dest} onChangeText={onDestChange} />
-      </Card>
-
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.lg }}>
-        {CATEGORIES.map((c) => {
-          const on = cat === c.key;
-          return (
-            <Pressable
-              key={c.key}
-              onPress={() => select(c.key)}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 6,
-                paddingHorizontal: 12,
-                paddingVertical: 9,
-                borderRadius: radii.pill,
-                borderWidth: 1,
-                borderColor: on ? palette.accent : palette.line,
-                backgroundColor: on ? palette.accent : palette.fillAccent,
-                opacity: dest.trim() ? 1 : 0.5,
-              }}
-            >
-              <Ionicons name={c.icon as never} size={15} color={on ? '#04101F' : palette.bright} />
-              <Text style={{ color: on ? '#04101F' : palette.text, fontSize: 13, fontWeight: '600' }}>
-                {c.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      {!cat ? (
-        <Card variant="glass">
-          <EmptyState
-            icon="compass"
-            title="Pick a category"
-            subtitle="Live nearby places for your destination appear here, ranked by distance."
-          />
-        </Card>
-      ) : cat === 'events' ? (
-        <Card variant="glass" style={{ gap: spacing.md }}>
-          <Text style={type.sub}>What’s on in {dest.trim()}</Text>
-          <Text style={type.bodyDim}>
-            Live event listings connect with a ticketing provider in a later update. For now, search what’s
-            happening now:
-          </Text>
-          <Pressable
-            onPress={() => searchAll('events this week')}
-            style={{
-              height: 44,
-              borderRadius: radii.control,
-              backgroundColor: palette.accent,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text style={{ color: '#04101F', fontWeight: '700' }}>Search events on Google</Text>
-          </Pressable>
-        </Card>
-      ) : query.isLoading ? (
-        <View style={{ paddingVertical: spacing.xxl, alignItems: 'center', gap: spacing.md }}>
-          <ActivityIndicator color={palette.bright} />
-          <Text style={type.bodyDim}>Finding places near {dest.trim()}…</Text>
-        </View>
-      ) : query.isError || (query.data && query.data.length === 0) ? (
-        <Card variant="glass" style={{ gap: spacing.md }}>
-          <EmptyState
-            icon="cloud-offline"
-            title={query.isError ? 'Couldn’t load live places' : 'Nothing found nearby'}
-            subtitle="Search on Google Maps instead."
-          />
-          <Pressable
-            onPress={() => searchAll(CATEGORIES.find((c) => c.key === cat)?.label ?? '')}
-            style={{
-              height: 44,
-              borderRadius: radii.control,
-              backgroundColor: palette.accent,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text style={{ color: '#04101F', fontWeight: '700' }}>Open in Google Maps</Text>
-          </Pressable>
-        </Card>
-      ) : (
-        <Card style={{ gap: 2 }}>
-          <SectionLabel>
-            {query.data?.length} nearby · by distance
-          </SectionLabel>
-          {query.data?.map((p, i) => (
-            <Pressable
-              key={p.id}
-              onPress={() => openPlace(p)}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: spacing.md,
-                paddingVertical: 12,
-                borderTopWidth: i === 0 ? 0 : 0.5,
-                borderTopColor: palette.line,
-              }}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={type.sub}>{p.name}</Text>
-                <Text style={[type.bodyDim, { marginTop: 2 }]}>{p.kind}</Text>
-              </View>
-              <Text style={[type.caption, { color: palette.bright }]}>{formatDistance(p.distanceM)}</Text>
-              <Ionicons name="chevron-forward" size={16} color={palette.faint} />
-            </Pressable>
-          ))}
-          <Text style={[type.caption, { textAlign: 'center', marginTop: spacing.md }]}>
-            Live places from OpenStreetMap. Tap to open in Maps.
-          </Text>
-        </Card>
-      )}
+export default function LocalExperiencesScreen() {
+  return (
+    <Screen contentStyle={{ paddingBottom: spacing.xxxl }}>
+      <BackHeader overline="Right now · tonight · this trip" title="Local Experiences" />
+      <PremiumGate feature="Local Experience Engine">
+        <LocalBody />
+      </PremiumGate>
     </Screen>
   );
 }

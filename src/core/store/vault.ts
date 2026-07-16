@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { zustandStorage } from '@/src/core/persistence/kv';
 import { secure } from '@/src/core/persistence/secure';
+import { deleteUserImage } from '@/src/core/firebase/storage';
 
 export type DocType = 'passport' | 'visa' | 'id' | 'insurance' | 'vaccination' | 'other';
 
@@ -11,6 +12,18 @@ export interface VaultDoc {
   name: string;
   expiry?: string; // ISO date
   hasNumber: boolean;
+  /** Local uri of an attached photo of the physical document (image-picker). */
+  photoUri?: string;
+  /** Cloud Storage download URL, once synced — survives reinstall/device change. */
+  remoteUrl?: string;
+  /** Cloud Storage object path, kept so the image can be deleted deterministically. */
+  storagePath?: string;
+}
+
+/** Offline emergency contact surfaced in Emergency Mode. */
+export interface EmergencyContact {
+  name: string;
+  phone: string;
 }
 
 export const DOC_TYPES: DocType[] = ['passport', 'visa', 'id', 'insurance', 'vaccination', 'other'];
@@ -40,8 +53,11 @@ export function removeDocNumber(id: string): Promise<void> {
 
 interface VaultState {
   docs: VaultDoc[];
+  /** Emergency-mode contact ({name, phone}); metadata only, editable inline. */
+  emergencyContact?: EmergencyContact;
   addMeta: (d: VaultDoc) => void;
   remove: (id: string) => void;
+  setEmergencyContact: (c?: EmergencyContact) => void;
   /** Purge every doc's secure-store number, then clear metadata. Awaited by
    *  account deletion so the Keychain entries don't outlive the account. */
   clearAll: () => Promise<void>;
@@ -51,14 +67,19 @@ export const useVault = create<VaultState>()(
   persist(
     (set, get) => ({
       docs: [],
+      emergencyContact: undefined,
       addMeta: (d) => set({ docs: [...get().docs, d] }),
       remove: (id) => {
+        const doc = get().docs.find((x) => x.id === id);
         void removeDocNumber(id);
+        if (doc?.storagePath) void deleteUserImage(doc.storagePath);
         set({ docs: get().docs.filter((x) => x.id !== id) });
       },
+      setEmergencyContact: (c) => set({ emergencyContact: c }),
       clearAll: async () => {
         await Promise.all(get().docs.map((d) => removeDocNumber(d.id)));
-        set({ docs: [] });
+        await Promise.all(get().docs.map((d) => deleteUserImage(d.storagePath)));
+        set({ docs: [], emergencyContact: undefined });
       },
     }),
     { name: 'jetsetter_vault_documents', storage: zustandStorage },

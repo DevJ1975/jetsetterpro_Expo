@@ -1,46 +1,88 @@
-import Constants from 'expo-constants';
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Text, View } from 'react-native';
-import { Card, SectionLabel, spacing, type } from '@/src/ui';
+import { StyleSheet, Text, View } from 'react-native';
+import { palette, spacing, type } from '@/src/ui';
 import { Screen } from '@/src/features/common/Screen';
 import { BackHeader } from '@/src/features/common/BackHeader';
-import { IconWell } from '@/src/features/common/IconWell';
+import { AppFooter } from '@/src/features/common/AppFooter';
+import { BrandHero } from '@/src/features/about/BrandHero';
+import { FounderCard } from '@/src/features/about/FounderCard';
+import { TourCarousel } from '@/src/features/about/TourCarousel';
+import type { IoniconName } from '@/src/features/onboarding/content';
 
-const HIGHLIGHTS: { icon: string; title: string; body: string }[] = [
-  { icon: 'sparkles', title: 'IRIS travel agent', body: 'An AI that knows your itinerary and can act on it.' },
-  { icon: 'airplane', title: 'Flights & disruptions', body: 'Tracking, rebooking, and leave-by timing.' },
-  { icon: 'briefcase', title: 'Trip tools', body: 'Packing, wallet, documents, loyalty, and more.' },
-  { icon: 'lock-closed', title: 'Private by design', body: 'Your data stays on-device; sync is yours to control.' },
-];
+// About — port of iOS `AboutView.swift`: brand hero, the swipeable feature
+// tour built from the product showcase screens, a note from the founder, and
+// the Powered-by-Claude footer.
 
 export default function AboutScreen() {
   return (
-    <Screen contentStyle={{ paddingHorizontal: spacing.xl, paddingBottom: spacing.xxxl }}>
-      <BackHeader overline="For the frequent traveler" title="About JetSetter Pro" />
+    <Screen contentStyle={{ paddingBottom: spacing.xxxl }}>
+      <BackHeader title="About" />
 
-      <Card variant="glass" style={{ gap: spacing.md }}>
-        <Text style={type.body}>
-          JetSetter Pro is your travel co-pilot — one place for your itinerary, expenses, documents,
-          and an AI agent that actually operates the app for you.
-        </Text>
-      </Card>
+      <BrandHero />
 
-      <Card style={{ marginTop: spacing.lg, gap: spacing.md }}>
-        <SectionLabel>What&apos;s inside</SectionLabel>
-        {HIGHLIGHTS.map((h) => (
-          <View key={h.title} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-            <IconWell name={h.icon} />
-            <View style={{ flex: 1 }}>
-              <Text style={type.sub}>{h.title}</Text>
-              <Text style={[type.bodyDim, { marginTop: 2 }]}>{h.body}</Text>
-            </View>
-          </View>
-        ))}
-      </Card>
+      <View style={styles.section}>
+        <SectionHeader icon="sparkles" title="Take the tour" />
+        <TourCarousel />
+      </View>
 
-      <Text style={[type.caption, { textAlign: 'center', marginTop: spacing.xl }]}>
-        JetSetter Pro · v{Constants.expoConfig?.version ?? '1.0.0'} · Made for travelers
-      </Text>
+      <View style={styles.section}>
+        <SectionHeader icon="chatbubble-ellipses" title="From the founder" />
+        <View style={{ paddingHorizontal: spacing.xl }}>
+          <FounderCard />
+        </View>
+      </View>
+
+      <View style={styles.footer}>
+        <View style={styles.poweredBy}>
+          <Ionicons name="sparkles" size={11} color="rgba(59,158,240,0.8)" />
+          <Text style={styles.poweredByText}>Powered by Claude</Text>
+        </View>
+        <Text style={styles.copyright}>© 2026 Trainovate Technologies LLC</Text>
+      </View>
+
+      <AppFooter />
     </Screen>
   );
 }
+
+function SectionHeader({ icon, title }: { icon: IoniconName; title: string }) {
+  return (
+    <View style={styles.sectionHeader}>
+      <Ionicons name={icon} size={12} color={palette.bright} />
+      <Text style={[type.overline, { color: palette.bright }]}>{title}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  section: {
+    marginTop: spacing.xxl,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    marginBottom: spacing.md,
+  },
+  footer: {
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.xxl,
+  },
+  poweredBy: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  poweredByText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(59,158,240,0.8)',
+  },
+  copyright: {
+    fontSize: 11,
+    color: palette.faint,
+  },
+});

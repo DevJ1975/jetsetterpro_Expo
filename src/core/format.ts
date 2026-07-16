@@ -50,6 +50,24 @@ export function formatMoney(amount: number, currency = 'USD'): string {
   }
 }
 
+/** Minutes → compact '2h 15m' / '45m' / '3h'. Negative clamps to 0. */
+export function formatDuration(minutes: number): string {
+  const total = Number.isFinite(minutes) ? Math.max(0, Math.round(minutes)) : 0;
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
+/** Kilometres → '1,240 km' or '770 mi', honoring the unit; ≥100 rounds to
+ *  whole, below keeps one decimal. Grouping is locale-aware. */
+export function formatDistance(km: number, unit: 'mi' | 'km' = 'km'): string {
+  const value = unit === 'mi' ? km * 0.621371 : km;
+  const rounded = value >= 100 ? Math.round(value) : Math.round(value * 10) / 10;
+  return `${rounded.toLocaleString()} ${unit}`;
+}
+
 /** 'Today', 'Tomorrow', 'In 3 days', 'In 2 weeks', or a date for far-out dates. */
 export function relativeDayLabel(iso: ISODate | ISODateTime): string {
   const target = parseDate(iso);

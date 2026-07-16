@@ -1,5 +1,7 @@
 import {
   formatDateRange,
+  formatDistance,
+  formatDuration,
   formatMoney,
   makeId,
   parseDate,
@@ -7,6 +9,27 @@ import {
   toISODate,
 } from '@/src/core/format';
 import { isoDaysFrom } from './_fixtures';
+
+describe('formatDuration', () => {
+  it('renders compact hours/minutes', () => {
+    expect(formatDuration(135)).toBe('2h 15m');
+    expect(formatDuration(45)).toBe('45m');
+    expect(formatDuration(180)).toBe('3h');
+    expect(formatDuration(0)).toBe('0m');
+  });
+  it('clamps negatives and rounds', () => {
+    expect(formatDuration(-10)).toBe('0m');
+    expect(formatDuration(59.6)).toBe('1h');
+  });
+});
+
+describe('formatDistance', () => {
+  it('formats km and honors the mi unit', () => {
+    expect(formatDistance(1240)).toBe('1,240 km');
+    expect(formatDistance(1000, 'mi')).toBe('621 mi'); // 1000 * 0.621371 ≈ 621.4
+    expect(formatDistance(8.4)).toBe('8.4 km'); // <100 keeps one decimal
+  });
+});
 
 describe('toISODate', () => {
   it('formats a local Date as YYYY-MM-DD with zero padding', () => {

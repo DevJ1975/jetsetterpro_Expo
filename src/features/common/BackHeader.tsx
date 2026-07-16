@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
-import { palette, spacing, type } from '@/src/ui';
+import { Text, View } from 'react-native';
+import { PressableScale, palette, spacing, type } from '@/src/ui';
 
 export function BackHeader({
   title,
@@ -25,9 +25,15 @@ export function BackHeader({
         paddingBottom: spacing.lg,
       }}
     >
-      <Pressable onPress={() => router.back()} hitSlop={12}>
+      <PressableScale
+        onPress={() => router.back()}
+        hitSlop={12}
+        haptic="light"
+        accessibilityRole="button"
+        accessibilityLabel="Back"
+      >
         <Ionicons name="chevron-back" size={26} color={palette.bright} />
-      </Pressable>
+      </PressableScale>
       <View style={{ flex: 1 }}>
         {overline ? (
           <Text style={[type.overline, { color: palette.bright, marginBottom: 4 }]}>{overline}</Text>

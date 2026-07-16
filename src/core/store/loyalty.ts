@@ -12,6 +12,8 @@ export interface LoyaltyAccount {
   tier?: string;
   points?: number;
   tierExpiration?: string; // ISO date
+  /** Catalog id (src/features/vaults/loyaltyPrograms.ts) for brand tile/color. */
+  programId?: string;
 }
 
 export const LOYALTY_KINDS: LoyaltyKind[] = ['airline', 'hotel', 'car', 'other'];

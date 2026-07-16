@@ -4,6 +4,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Badge, Card, ListRow, ScreenHeader, SectionLabel, palette, spacing, type } from '@/src/ui';
 import { Screen } from '@/src/features/common/Screen';
+import { AppFooter } from '@/src/features/common/AppFooter';
 import { IconWell } from '@/src/features/common/IconWell';
 import { usePreferences } from '@/src/core/store/preferences';
 
@@ -56,6 +57,7 @@ const CATALOG: Group[] = [
       { title: 'Airport Map', subtitle: 'Indoor wayfinding', icon: 'map', slug: 'airport-map' },
       { title: 'Identity & Trusted Traveler', subtitle: 'Digital ID · CLEAR · PreCheck', icon: 'card', slug: 'identity' },
       { title: 'Luggage Tracker', subtitle: 'AirTag & WorldTracer', icon: 'bag-handle', slug: 'luggage' },
+      { title: 'Where I Parked', subtitle: 'Save your parking spot', icon: 'car', slug: 'parking' },
     ],
   },
   {
@@ -94,6 +96,7 @@ export default function MoreScreen() {
   // Ported screens route directly; everything else lands on the shared "coming soon".
   const REAL_ROUTES: Record<string, string> = {
     iris: '/iris',
+    parking: '/parking',
     packing: '/packing',
     currency: '/currency',
     wallet: '/wallet',
@@ -181,7 +184,8 @@ export default function MoreScreen() {
           ))}
         </Card>
       ))}
-      <View style={{ height: spacing.xxxl }} />
+      <AppFooter />
+      <View style={{ height: spacing.xxl }} />
     </Screen>
   );
 }

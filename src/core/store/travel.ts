@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { StorageKeys, zustandStorage } from '@/src/core/persistence/kv';
+import { syncFlightWatches } from '@/src/core/firebase/flightWatches';
 import {
   deleteExpenseRemote,
   deleteTripRemote,
@@ -8,6 +9,14 @@ import {
   pushTrip,
 } from '@/src/core/firebase/firestore';
 import type { Expense, ItineraryItem, PackingItem, Trip } from '@/src/types/models';
+
+// Debounced mirror of upcoming flights → flightWatches (see flightWatches.ts);
+// trip edits often come in bursts, one sync per burst is plenty.
+let watchSyncTimer: ReturnType<typeof setTimeout> | undefined;
+function scheduleWatchSync(trips: () => Trip[]) {
+  clearTimeout(watchSyncTimer);
+  watchSyncTimer = setTimeout(() => void syncFlightWatches(trips()), 4000);
+}
 
 // Pure selectors live in a side-effect-free module; re-exported here so existing
 // `@/src/core/store/travel` importers keep working.
@@ -51,15 +60,18 @@ export const useTravel = create<TravelState>()(
         const trip = sortTripItems(t);
         set({ trips: [...get().trips, trip] });
         void pushTrip(trip);
+        scheduleWatchSync(() => get().trips);
       },
       updateTrip: (t) => {
         const trip = sortTripItems(t);
         set({ trips: get().trips.map((x) => (x.id === trip.id ? trip : x)) });
         void pushTrip(trip);
+        scheduleWatchSync(() => get().trips);
       },
       removeTrip: (id) => {
         set({ trips: get().trips.filter((x) => x.id !== id) });
         void deleteTripRemote(id);
+        scheduleWatchSync(() => get().trips);
       },
       addItineraryItem: (tripId, item) => {
         const trip = get().trips.find((x) => x.id === tripId);

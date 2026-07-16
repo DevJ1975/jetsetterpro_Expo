@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { runIrisConversation } from '@/src/core/ai/agentLoop';
 import { ChatMessage } from '@/src/core/ai/anthropic';
+import { boundedHistory } from '@/src/core/ai/history';
 import { buildSystemPrompt } from '@/src/core/ai/iris/agent';
 import { composeFirstTurn, currentSnapshot } from '@/src/core/ai/iris/context';
 import { executeIrisTool, IRIS_TOOLS } from '@/src/core/ai/iris/tools';
@@ -79,7 +80,9 @@ export const useIris = create<IrisChatState>((set, get) => ({
     try {
       const result = await runIrisConversation({
         system: buildSystemPrompt(),
-        messages: [...s.apiMessages, apiUser],
+        // Bound the history so a marathon chat never trips aiIris's 60-message
+        // cap; trims whole old exchanges from the front, keeping the newest.
+        messages: boundedHistory([...s.apiMessages, apiUser]),
         tools: IRIS_TOOLS,
         executeTool: executeIrisTool,
         // Reset the live buffer each turn so the streamed bubble shows only the
@@ -120,7 +123,16 @@ export const useIris = create<IrisChatState>((set, get) => ({
     if (!pending) return;
     // Clear optimistically BEFORE awaiting so the card can't double-commit.
     useIrisRouter.getState().cancel();
-    const result = await pending.commit();
+    // A rejecting commit must never strand the ConfirmationCard's spinner or
+    // raise an unhandled rejection — surface the failure as a normal bubble.
+    // (Booking commits also resolve friendly strings themselves; this guards
+    // every other kind, e.g. a throwing calendar permission.)
+    let result: string;
+    try {
+      result = await pending.commit();
+    } catch {
+      result = "That didn't go through — nothing was changed. Please try again.";
+    }
     // Display-only: appending to apiMessages here would create two consecutive
     // assistant turns (the model's "prepared…" turn already ended the exchange),
     // which Anthropic rejects. The commit result shows in the transcript instead.

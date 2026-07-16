@@ -1,17 +1,30 @@
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, View, Text, StyleSheet } from 'react-native';
 import { palette, spacing } from '../theme';
+import { haptics } from '@/src/core/haptics';
 
-/** Itinerary/settings row: icon well + title/subtitle + right slot. Min height 56 (44+ hit target). */
+/** Itinerary/settings row: icon well + title/subtitle + right slot. Min height 56 (44+ hit target).
+ *  A navigational row (onPress, no custom `right`) gets a chevron affordance. */
 export default function ListRow({ icon, title, subtitle, right, onPress, last }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.row, !last && styles.divider, pressed && onPress && { backgroundColor: 'rgba(59,158,240,0.06)' }]}>
+    <Pressable
+      onPress={onPress}
+      onPressIn={onPress ? () => haptics.selection() : undefined}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={onPress ? title : undefined}
+      style={({ pressed }) => [styles.row, !last && styles.divider, pressed && onPress && { backgroundColor: 'rgba(59,158,240,0.06)' }]}
+    >
       {icon ? <View style={styles.well}>{icon}</View> : null}
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={styles.title} numberOfLines={1}>{title}</Text>
         {subtitle ? <Text style={styles.sub} numberOfLines={1}>{subtitle}</Text> : null}
       </View>
-      {right ? <View style={{ marginLeft: spacing.md }}>{right}</View> : null}
+      {right ? (
+        <View style={{ marginLeft: spacing.md }}>{right}</View>
+      ) : onPress ? (
+        <Ionicons name="chevron-forward" size={18} color={palette.faint} style={{ marginLeft: spacing.sm }} />
+      ) : null}
     </Pressable>
   );
 }

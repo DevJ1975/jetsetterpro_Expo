@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
-import { palette, spacing, type } from '@/src/ui';
+import { Text, View } from 'react-native';
+import { PressableScale, palette, spacing, type } from '@/src/ui';
 
 export function ModalHeader({
   title,
@@ -25,24 +25,35 @@ export function ModalHeader({
         paddingBottom: spacing.lg,
       }}
     >
-      <Pressable onPress={() => router.back()} hitSlop={10} style={{ width: 64 }}>
+      <PressableScale
+        onPress={() => router.back()}
+        hitSlop={10}
+        haptic="light"
+        style={{ width: 64 }}
+        accessibilityRole="button"
+        accessibilityLabel="Cancel"
+      >
         <Text style={[type.body, { color: palette.bright }]}>Cancel</Text>
-      </Pressable>
+      </PressableScale>
       <Text style={[type.sub, { flex: 1, textAlign: 'center' }]} numberOfLines={1}>
         {title}
       </Text>
-      <Pressable
+      <PressableScale
         onPress={onSave}
         disabled={saveDisabled}
         hitSlop={10}
+        haptic="success"
         style={{ width: 64, alignItems: 'flex-end' }}
+        accessibilityRole="button"
+        accessibilityLabel={saveLabel}
+        accessibilityState={{ disabled: !!saveDisabled }}
       >
         <Text
           style={[type.body, { color: saveDisabled ? palette.faint : palette.bright, fontWeight: '700' }]}
         >
           {saveLabel}
         </Text>
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

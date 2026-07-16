@@ -43,16 +43,22 @@ export const IDENTITY_META: Record<IdentityKind, { label: string; icon: string }
 
 interface IdentityState {
   credentials: IdentityCredential[];
+  /** 2-letter postal code of the state picked for the Digital Driver's License
+   *  hub card (iOS persists this as "jetsetter_id_state" in UserDefaults). */
+  mdlState?: string;
   add: (c: IdentityCredential) => void;
   remove: (id: string) => void;
+  setMdlState: (code: string) => void;
 }
 
 export const useIdentity = create<IdentityState>()(
   persist(
     (set, get) => ({
       credentials: [],
+      mdlState: undefined,
       add: (c) => set({ credentials: [...get().credentials, c] }),
       remove: (id) => set({ credentials: get().credentials.filter((x) => x.id !== id) }),
+      setMdlState: (code) => set({ mdlState: code }),
     }),
     { name: 'jetsetter_id_state', storage: zustandStorage },
   ),

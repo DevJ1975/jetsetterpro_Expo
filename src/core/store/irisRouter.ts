@@ -12,7 +12,24 @@ export type PendingKind =
   | 'trackFlight'
   | 'generatePackingList'
   | 'submitExpenses'
-  | 'addToCalendar';
+  | 'addToCalendar'
+  | 'bookFlight'
+  | 'cancelBooking'
+  | 'bookHotel'
+  | 'cancelHotel'
+  | 'bookCar'
+  | 'cancelCar';
+
+/** Money-moving kinds: the confirmation must be an explicit on-screen tap —
+ *  hands-free voice "yes" is not accepted for these. */
+export const TAP_ONLY_KINDS: ReadonlySet<PendingKind> = new Set([
+  'bookFlight',
+  'cancelBooking',
+  'bookHotel',
+  'cancelHotel',
+  'bookCar',
+  'cancelCar',
+]);
 
 export interface PendingAction {
   id: string;
@@ -33,7 +50,8 @@ export type Destination =
   | 'documentVault'
   | 'packingList'
   | 'groundTransport'
-  | 'currency';
+  | 'currency'
+  | 'booking';
 
 export const DESTINATION_NAME: Record<Destination, string> = {
   home: 'Home',
@@ -48,6 +66,7 @@ export const DESTINATION_NAME: Record<Destination, string> = {
   packingList: 'your Packing List',
   groundTransport: 'Ground Transport',
   currency: 'Currency & Expenses',
+  booking: 'Flight Booking',
 };
 
 interface IrisRouterState {
@@ -83,6 +102,7 @@ export const useIrisRouter = create<IrisRouterState>((set) => ({
       flightTracker: '/inflight',
       groundTransport: '/ground',
       checkIn: '/itinerary',
+      booking: '/booking',
     };
     const realHref = real[dest];
     if (realHref) router.navigate(realHref as never);
