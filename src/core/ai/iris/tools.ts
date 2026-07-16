@@ -3,6 +3,7 @@ import { ToolSchema } from '@/src/core/ai/anthropic';
 import { BackendError, isBackendConfigured } from '@/src/core/api/backend';
 import { confirmCancel, createOrder, getOffer, listOrders, quoteCancel } from '@/src/core/api/duffel';
 import { convertCurrency } from '@/src/core/api/exchange';
+import { assessConnection } from '@/src/core/connections';
 import { searchFlightsViaAgent } from '@/src/core/api/flightAgent';
 import { cToF, fetchWeather } from '@/src/core/api/weather';
 import { formatDateRange, makeId, toISODate } from '@/src/core/format';
@@ -280,6 +281,22 @@ export const IRIS_TOOLS: ToolSchema[] = [
       type: 'object',
       properties: { orderId: { type: 'string', description: 'An ord_… id from listMyBookings.' } },
       required: ['orderId'],
+    },
+  },
+  {
+    name: 'planConnection',
+    description:
+      "Assess a tight flight connection: estimate the gate-to-gate transfer time and whether the layover is enough. Read-only. Use when the traveler is connecting and asks whether they'll make it, or to guide them from the arrival gate to the departure gate.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        layoverMinutes: { type: 'number', description: 'Minutes between landing and the next departure.' },
+        fromGate: { type: 'string', description: 'Arrival gate, e.g. B12.' },
+        fromTerminal: { type: 'string', description: 'Arrival terminal, e.g. 2.' },
+        toGate: { type: 'string', description: 'Departure gate for the connecting flight, e.g. A4.' },
+        toTerminal: { type: 'string', description: 'Departure terminal for the connecting flight.' },
+      },
+      required: ['layoverMinutes'],
     },
   },
 ];
@@ -608,6 +625,27 @@ export async function executeIrisTool(
       } catch (e) {
         return { content: bookingApiError(e) };
       }
+    }
+
+    case 'planConnection': {
+      const layover = num(input, 'layoverMinutes');
+      if (layover == null || layover <= 0)
+        return { content: 'How many minutes is the layover between the two flights?', isError: true };
+      // assessConnection works from ISO times; synthesize them from the layover
+      // (epoch 0 → epoch + layover) so the math is identical.
+      const arrivalISO = new Date(0).toISOString();
+      const departureISO = new Date(layover * 60_000).toISOString();
+      const a = assessConnection(
+        arrivalISO,
+        departureISO,
+        { gate: str(input, 'fromGate'), terminal: str(input, 'fromTerminal') },
+        { gate: str(input, 'toGate'), terminal: str(input, 'toTerminal') },
+      );
+      const label =
+        a.verdict === 'comfortable' ? 'COMFORTABLE' : a.verdict === 'tight' ? 'TIGHT' : 'RISKY';
+      return {
+        content: `CONNECTION (${label}): ~${a.transferMinutes} min needed vs a ${a.layoverMinutes} min layover (${a.bufferMinutes >= 0 ? '+' : ''}${a.bufferMinutes} min slack). ${a.advice}`,
+      };
     }
 
     default:
