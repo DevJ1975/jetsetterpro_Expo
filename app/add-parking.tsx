@@ -10,7 +10,7 @@ import { Screen } from '@/src/features/common/Screen';
 import { ModalHeader } from '@/src/features/common/ModalHeader';
 import { useSaveCelebration } from '@/src/features/common/SaveCelebration';
 import { makeId } from '@/src/core/format';
-import { uploadUserImage } from '@/src/core/firebase/storage';
+import { deleteUserImage, uploadUserImage } from '@/src/core/firebase/storage';
 import { useParking } from '@/src/core/store/parking';
 
 export default function AddParkingScreen() {
@@ -81,10 +81,13 @@ export default function AddParkingScreen() {
     if (!valid || saving) return;
     setSaving(true);
     const id = existing?.id ?? makeId();
-    // Sync a newly-picked photo to Cloud Storage (survives reinstall); reuse the
-    // existing remote image when the photo is unchanged; local uri is the fallback.
-    const changedPhoto = photoUri && photoUri !== existing?.photoUri;
-    const stored = changedPhoto ? await uploadUserImage(photoUri, 'parking', id) : null;
+    // Photo lifecycle: unchanged → keep the existing remote ref; replaced → the
+    // same id overwrites the same Storage object (no orphan); removed → delete
+    // the old object and clear the refs so it stops displaying + doesn't leak.
+    const removedPhoto = !photoUri && !!existing?.storagePath;
+    const changedPhoto = !!photoUri && photoUri !== existing?.photoUri;
+    const stored = changedPhoto && photoUri ? await uploadUserImage(photoUri, 'parking', id) : null;
+    if (removedPhoto && existing?.storagePath) void deleteUserImage(existing.storagePath);
     setSpot({
       id,
       level: level.trim() || undefined,
@@ -92,8 +95,8 @@ export default function AddParkingScreen() {
       spot: stall.trim() || undefined,
       note: note.trim() || undefined,
       photoUri,
-      remoteUrl: stored?.url ?? (changedPhoto ? undefined : existing?.remoteUrl),
-      storagePath: stored?.path ?? (changedPhoto ? undefined : existing?.storagePath),
+      remoteUrl: removedPhoto ? undefined : (stored?.url ?? existing?.remoteUrl),
+      storagePath: removedPhoto ? undefined : (stored?.path ?? existing?.storagePath),
       coords,
       address,
       // Preserve the original save time when editing an existing spot.

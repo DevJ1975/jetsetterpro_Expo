@@ -33,7 +33,8 @@ async function searchStays(body) {
       guests: Array.isArray(guests) && guests.length ? guests : [{ type: 'adult' }],
     },
   });
-  const results = (data.results || data || []).slice(0, 12).map((r) => ({
+  const rows = Array.isArray(data && data.results) ? data.results : Array.isArray(data) ? data : [];
+  const results = rows.slice(0, 12).map((r) => ({
     id: r.id,
     name: r.accommodation && r.accommodation.name,
     rating: r.accommodation && r.accommodation.rating,

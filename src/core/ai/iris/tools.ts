@@ -812,7 +812,6 @@ export async function executeIrisTool(
           async () => {
             try {
               const { booking } = await bookStay(quote.id, { ...v.guest });
-              void queryClient.invalidateQueries({ queryKey: ['duffelOrders'] });
               return `Booked! Confirmation ${booking.reference ?? booking.id} (test mode — no charge).`;
             } catch (e) {
               return `The hotel booking didn't go through — ${bookingApiError(e)}`;
@@ -836,7 +835,6 @@ export async function executeIrisTool(
         async () => {
           try {
             await cancelStay(bookingId);
-            void queryClient.invalidateQueries({ queryKey: ['duffelOrders'] });
             return 'Hotel booking cancelled.';
           } catch (e) {
             return `The cancellation didn't go through — ${bookingApiError(e)}`;
@@ -871,7 +869,13 @@ export async function executeIrisTool(
       const pickup = await geocodePlace(pickupLocation);
       if (!pickup) return { content: `I couldn't locate "${pickupLocation}".` };
       const dropoffLoc = str(input, 'dropoffLocation');
-      const dropoff = dropoffLoc ? await geocodePlace(dropoffLoc) : undefined;
+      let dropoff;
+      if (dropoffLoc) {
+        dropoff = await geocodePlace(dropoffLoc);
+        // Don't silently fall back to the pickup location — that would return
+        // round-trip results for a one-way request the user didn't ask for.
+        if (!dropoff) return { content: `I couldn't locate the drop-off "${dropoffLoc}". Try a nearby city or airport.` };
+      }
       try {
         const { results } = await searchCars({
           pickup,
@@ -905,7 +909,6 @@ export async function executeIrisTool(
           async () => {
             try {
               const { booking } = await bookCar(quote.id, { ...v.driver });
-              void queryClient.invalidateQueries({ queryKey: ['duffelOrders'] });
               return `Booked! Confirmation ${booking.reference ?? booking.id} (test mode — no charge).`;
             } catch (e) {
               return `The car booking didn't go through — ${bookingApiError(e)}`;
@@ -929,7 +932,6 @@ export async function executeIrisTool(
         async () => {
           try {
             await cancelCar(bookingId);
-            void queryClient.invalidateQueries({ queryKey: ['duffelOrders'] });
             return 'Rental-car booking cancelled.';
           } catch (e) {
             return `The cancellation didn't go through — ${bookingApiError(e)}`;

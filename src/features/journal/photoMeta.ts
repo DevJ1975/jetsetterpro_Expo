@@ -11,7 +11,11 @@ import { zustandStorage } from '@/src/core/persistence/kv';
 interface PhotoMetaState {
   /** uri → 'YYYY-MM-DD' */
   dates: Record<string, string>;
+  /** uri → Cloud Storage object path, so a removed photo's cloud object can be
+   *  deleted rather than orphaned. */
+  paths: Record<string, string>;
   setDates: (entries: Record<string, string>) => void;
+  setPaths: (entries: Record<string, string>) => void;
   removeUri: (uri: string) => void;
 }
 
@@ -19,11 +23,15 @@ export const usePhotoMeta = create<PhotoMetaState>()(
   persist(
     (set, get) => ({
       dates: {},
+      paths: {},
       setDates: (entries) => set({ dates: { ...get().dates, ...entries } }),
+      setPaths: (entries) => set({ paths: { ...get().paths, ...entries } }),
       removeUri: (uri) => {
-        const next = { ...get().dates };
-        delete next[uri];
-        set({ dates: next });
+        const dates = { ...get().dates };
+        const paths = { ...get().paths };
+        delete dates[uri];
+        delete paths[uri];
+        set({ dates, paths });
       },
     }),
     { name: 'jetsetter_journal_photo_meta', storage: zustandStorage },

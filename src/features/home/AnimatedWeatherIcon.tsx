@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { View } from 'react-native';
 import Animated, {
   Easing,
+  cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -39,7 +40,20 @@ export function AnimatedWeatherIcon({ code, size = 26 }: { code: number; size?: 
   const fall = useSharedValue(0);
 
   useEffect(() => {
-    if (reduce) return;
+    const stopAll = () => {
+      for (const v of [spin, drift, bob, flash, fall]) cancelAnimation(v);
+      spin.value = 0;
+      drift.value = 0;
+      bob.value = 0;
+      fall.value = 0;
+      flash.value = 1;
+    };
+    // useReduceMotion resolves asynchronously (starts false), so motion may have
+    // begun on the first pass — cancel + reset it when reduce becomes true.
+    if (reduce) {
+      stopAll();
+      return;
+    }
     const loop = (v: typeof spin, to: number, dur: number, seq = false) => {
       v.value = seq
         ? withRepeat(withSequence(withTiming(to, { duration: dur }), withTiming(0, { duration: dur })), -1)
@@ -61,6 +75,7 @@ export function AnimatedWeatherIcon({ code, size = 26 }: { code: number; size?: 
         -1,
       );
     }
+    return stopAll; // cancel loops on unmount / motion change
   }, [reduce, motion, spin, drift, bob, flash, fall]);
 
   const iconStyle = useAnimatedStyle(() => {

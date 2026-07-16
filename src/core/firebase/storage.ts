@@ -3,14 +3,21 @@ import { deleteObject, getDownloadURL, getStorage, ref, uploadBytes } from 'fire
 import { auth } from './auth';
 import { firebaseApp, isFirebaseConfigured } from './config';
 
-// Durable media sync — user photos (vault documents, parking spot, journal)
-// live under the user's private Cloud Storage tree so they survive a reinstall
-// or device change instead of being lost with the local file uri. Everything
-// here is best-effort and gated: when Firebase isn't configured or no user is
-// signed in, callers keep the local uri as a fallback and nothing breaks.
+// Media backup — user photos (vault documents, parking spot, journal) are
+// uploaded to the user's private Cloud Storage tree so the image itself is
+// backed up off-device instead of living only as a local file uri. Best-effort
+// and gated: when Firebase isn't configured or no user is signed in, callers
+// keep the local uri as a fallback and nothing breaks.
 //
 // Path convention: users/{uid}/{folder}/{id}.jpg — enforced by
 // firebase/storage.rules (each user reads/writes only their own tree).
+//
+// SCOPE: this backs up the image bytes. Full cross-device RESTORE additionally
+// needs the owning list (vault docs / parking spot / journal entries) mirrored
+// to the account in Firestore and a stable (email-linked) uid — those lists are
+// local-only today, so after a fresh install the remoteUrl/storagePath pointers
+// are gone even though the objects persist. Syncing those lists is the
+// follow-up that makes "restores on any device" fully true.
 
 export interface StoredImage {
   url: string; // https download URL (persisted for display)

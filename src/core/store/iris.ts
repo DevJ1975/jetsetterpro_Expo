@@ -22,6 +22,11 @@ interface IrisChatState {
   streamingContent: string;
   isResponding: boolean;
   error: string | null;
+  // Outcome of the last confirmed/declined staged action, injected into the
+  // NEXT user turn so the model knows it completed (can report it, and won't
+  // re-stage it). Not written to apiMessages directly — that would create two
+  // consecutive assistant turns, which Anthropic rejects.
+  actionNote: string | null;
   ratedIds: string[];
   queuedPrompt: string | null;
   queuePrompt: (text: string) => void;
@@ -45,6 +50,7 @@ export const useIris = create<IrisChatState>((set, get) => ({
   streamingContent: '',
   isResponding: false,
   error: null,
+  actionNote: null,
   ratedIds: [],
   queuedPrompt: null,
 
@@ -62,7 +68,15 @@ export const useIris = create<IrisChatState>((set, get) => ({
     const isFirst = s.apiMessages.length === 0;
     const travel = useTravel.getState();
     const snapshot = isFirst ? currentSnapshot(travel.trips, travel.expenses) : '';
-    const apiUser: ChatMessage = { role: 'user', content: composeFirstTurn(text, snapshot) };
+    // Surface the outcome of the last confirmed/declined action to the model so
+    // it can report it accurately and won't re-stage a completed booking.
+    const note = s.actionNote;
+    if (note) set({ actionNote: null });
+    const baseContent = composeFirstTurn(text, snapshot);
+    const apiUser: ChatMessage = {
+      role: 'user',
+      content: note ? `[System note — result of your last prepared action: ${note}]\n\n${baseContent}` : baseContent,
+    };
 
     // No AI backend configured — be honest rather than fake a reply. Don't
     // record this in apiMessages so a later live turn starts a clean history.
@@ -133,10 +147,13 @@ export const useIris = create<IrisChatState>((set, get) => ({
     } catch {
       result = "That didn't go through — nothing was changed. Please try again.";
     }
-    // Display-only: appending to apiMessages here would create two consecutive
-    // assistant turns (the model's "prepared…" turn already ended the exchange),
-    // which Anthropic rejects. The commit result shows in the transcript instead.
-    set((st) => ({ messages: [...st.messages, { id: makeId(), role: 'assistant', text: result }] }));
+    // Display-only append (a direct apiMessages write would be a second
+    // consecutive assistant turn). The outcome is fed back to the model on the
+    // next turn via `actionNote` so it stays in sync with reality.
+    set((st) => ({
+      messages: [...st.messages, { id: makeId(), role: 'assistant', text: result }],
+      actionNote: result,
+    }));
   },
 
   cancelPending: () => {
@@ -147,6 +164,7 @@ export const useIris = create<IrisChatState>((set, get) => ({
         ...st.messages,
         { id: makeId(), role: 'assistant', text: "No problem — I won't make that change." },
       ],
+      actionNote: 'The user declined the prepared action; it was not performed.',
     }));
   },
 
@@ -154,6 +172,6 @@ export const useIris = create<IrisChatState>((set, get) => ({
 
   clear: () => {
     useIrisRouter.getState().cancel();
-    set({ messages: [], apiMessages: [], streamingContent: '', error: null, ratedIds: [] });
+    set({ messages: [], apiMessages: [], streamingContent: '', error: null, actionNote: null, ratedIds: [] });
   },
 }));
