@@ -1,11 +1,24 @@
 import React, { memo, useEffect, useRef, useState } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
+import Animated, {
+  Easing,
+  runOnJS,
+  useAnimatedReaction,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
+import { useReduceMotion } from '@/src/core/useReduceMotion';
 import { FLAP_ALPHABET, nextFlapChar, normalizeFlapChar } from './splitFlap';
 
 /**
  * Solari-style split-flap text — port of iOS `SplitFlapText.swift`. Each
- * character cell cycles through the flap alphabet before settling on its
- * target, with a staggered start per column. Used by the departure board.
+ * character cell spins through the flap alphabet before settling on its target,
+ * staggered per column. The spin is driven by react-native-reanimated (a shared
+ * progress value + `useAnimatedReaction` commits each character on the UI-thread
+ * clock — no JS `setInterval`), with a subtle vertical "flap" squash. Honors
+ * Reduce Motion by snapping straight to the target.
  */
 export type SplitFlapTextProps = {
   text: string;
@@ -68,37 +81,80 @@ const FlapCell = memo(function FlapCell({
   tint: string;
   background: string;
 }) {
+  const reduce = useReduceMotion();
   const [displayed, setDisplayed] = useState(' ');
-  // Written only inside timer callbacks; carries the resting character across
-  // target changes so a status update re-spins from where the cell stopped.
+  // Mirrors the rendered char so a new target re-spins from where it stopped.
   const displayedRef = useRef(' ');
+  // The spin sequence (resting char → target) lives in a shared value so the
+  // reaction worklet can index it on the UI thread; `t` is 0→1 spin progress.
+  const seq = useSharedValue<string[]>([]);
+  const t = useSharedValue(0);
+
+  // Commit a spun character on the JS thread (updates ref + visible state).
+  const commit = (ch: string) => {
+    displayedRef.current = ch;
+    setDisplayed(ch);
+  };
 
   useEffect(() => {
     if (displayedRef.current === target) return;
-    let interval: ReturnType<typeof setInterval> | undefined;
-    const timeout = setTimeout(() => {
-      interval = setInterval(() => {
-        const next = nextFlapChar(displayedRef.current);
-        displayedRef.current = next;
-        setDisplayed(next);
-        if (next === target && interval) clearInterval(interval);
-      }, stepMs);
-    }, delayMs);
-    return () => {
-      clearTimeout(timeout);
-      if (interval) clearInterval(interval);
-    };
-    // Re-run only when the target changes (status updates re-spin the cell).
-  }, [target, delayMs, stepMs]);
+    // Build the flap sequence from the resting char to the target. Bounded by
+    // the alphabet length — nextFlapChar cycles, so any pair is reachable.
+    const chars: string[] = [];
+    let c = displayedRef.current;
+    for (let n = 0; n < FLAP_ALPHABET.length + 1 && c !== target; n++) {
+      c = nextFlapChar(c);
+      chars.push(c);
+    }
+    if (chars.length === 0) return;
+    seq.value = chars;
+    if (reduce) {
+      // Snap: jump progress to the end so the reaction commits the target on
+      // the next frame with no visible spin (avoids synchronous setState here).
+      t.value = 1;
+      return;
+    }
+    t.value = 0;
+    t.value = withDelay(
+      delayMs,
+      withTiming(1, { duration: chars.length * stepMs, easing: Easing.linear }),
+    );
+    // commit + refs are stable; re-run only when the target/timing/RM changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target, delayMs, stepMs, reduce]);
+
+  // Advance the visible character from spin progress on the UI-thread clock.
+  useAnimatedReaction(
+    () => {
+      const n = seq.value.length;
+      if (n === 0) return -1;
+      const i = Math.floor(t.value * n);
+      return i < 0 ? 0 : i > n - 1 ? n - 1 : i;
+    },
+    (curr, prev) => {
+      if (curr >= 0 && curr !== prev) {
+        runOnJS(commit)(seq.value[curr]);
+      }
+    },
+    [],
+  );
+
+  // Subtle mechanical "flap": the cell squashes vertically between characters.
+  const flapStyle = useAnimatedStyle(() => {
+    const n = seq.value.length;
+    if (n === 0) return { transform: [{ scaleY: 1 }] };
+    const frac = (t.value * n) % 1;
+    return { transform: [{ scaleY: 1 - 0.16 * Math.sin(frac * Math.PI) }] };
+  });
 
   return (
     <View style={[styles.cell, { width, height, backgroundColor: background }]}>
-      <Text
-        style={[styles.char, { fontSize, color: tint, lineHeight: height }]}
+      <Animated.Text
+        style={[styles.char, { fontSize, color: tint, lineHeight: height }, flapStyle]}
         allowFontScaling={false}
       >
         {displayed}
-      </Text>
+      </Animated.Text>
       <View style={styles.split} pointerEvents="none" />
     </View>
   );
