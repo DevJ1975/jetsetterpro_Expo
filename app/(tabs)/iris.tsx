@@ -161,10 +161,16 @@ export default function IrisScreen() {
           }
         />
 
+        {/* The tab-bar inset must NOT live on the KAV itself: behavior="padding"
+            composes {paddingBottom: keyboardHeight} over this style, forcing it
+            to 0 whenever the keyboard is closed — which left the composer under
+            the floating tab bar, swallowing every tap (keyboard could never
+            open). The composer row carries the inset instead, and the KAV's
+            offset compensates so the gap above the keyboard stays exact. */}
         <KeyboardAvoidingView
-          style={{ flex: 1, paddingBottom: floatingInset }}
+          style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={8}
+          keyboardVerticalOffset={8 - floatingInset}
         >
           <ScrollView
             ref={scrollRef}
@@ -206,7 +212,8 @@ export default function IrisScreen() {
               gap: spacing.md,
               paddingHorizontal: spacing.xl,
               paddingTop: spacing.sm,
-              paddingBottom: spacing.md,
+              // Clears the floating iOS tab bar at rest (see KAV note above).
+              paddingBottom: spacing.md + floatingInset,
               borderTopWidth: 1,
               borderTopColor: palette.line,
             }}
@@ -233,6 +240,9 @@ export default function IrisScreen() {
               }}
               onSubmitEditing={dispatch}
               returnKeyType="send"
+              // multiline defaults to newline-on-return, which made the
+              // "send"-labeled return key insert line breaks instead of sending.
+              submitBehavior="submit"
             />
             <Pressable
               onPress={dispatch}

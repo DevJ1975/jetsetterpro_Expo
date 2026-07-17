@@ -12,7 +12,13 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.trainovate.jetsetterpro",
       "infoPlist": {
-        "LSApplicationQueriesSchemes": ["uber", "lyft"]
+        "LSApplicationQueriesSchemes": [
+          "uber",
+          "lyft"
+        ],
+        "NSSpeechRecognitionUsageDescription": "JetSetter Pro transcribes your speech so IRIS can understand what you ask.",
+        "NSMicrophoneUsageDescription": "JetSetter Pro uses the microphone so you can talk to IRIS hands-free.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -132,10 +138,14 @@
     },
     "extra": {
       "router": {},
+      "expo-navigation-bar": {
+        "enforceContrast": false,
+        "style": "light"
+      },
       "eas": {
-        "projectId": "42dd649a-31eb-4807-b2bd-113cdbe5b634"
+        "projectId": "17e5acb5-3fde-407d-9b4e-d75a3de71809"
       }
     },
-    "owner": "jamil.dev"
+    "owner": "trainovations"
   }
 }

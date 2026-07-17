@@ -18,6 +18,11 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# Store submission credentials — ASC .p8, Google Play service-account .json, etc.
+# Keep the folder tracked (via .gitkeep) but never commit anything dropped into it.
+credentials/*
+!credentials/.gitkeep
+
 # Metro
 .metro-health-check*
 
