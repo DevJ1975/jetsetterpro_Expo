@@ -39,27 +39,34 @@ export function Screen({
   const floatingInset = Platform.OS === 'ios' ? tabBarHeight : 0;
 
   const body = scroll ? (
-    <ScrollView
-      contentContainerStyle={[{ paddingBottom: 56 + floatingInset }, contentStyle]}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-      refreshControl={
-        onRefresh ? (
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={palette.bright}
-            colors={[palette.accent]}
-            progressBackgroundColor={palette.elevated}
-          />
-        ) : undefined
-      }
-      // Keeps the focused input above the keyboard on iOS (Android resizes the
-      // window via adjustResize, so the ScrollView already handles it there).
-      automaticallyAdjustKeyboardInsets
-    >
-      {children}
-    </ScrollView>
+    // Keyboard avoidance is layout-driven (KAV padding) rather than
+    // `automaticallyAdjustKeyboardInsets`: on the New Architecture that prop
+    // mutates contentInset/contentOffset natively on keyboard-show and only
+    // restores them on a clean keyboard-hide notification — dismissals via a
+    // Modal, an app hand-off (Uber/Lyft deep link), or a missed iOS frame left
+    // screens permanently scrolled off-screen (facebook/react-native#47731).
+    // A padding KAV simply re-lays-out when the keyboard goes away, so content
+    // can never get stranded. (Android resizes the window via adjustResize.)
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView
+        contentContainerStyle={[{ paddingBottom: 56 + floatingInset }, contentStyle]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          onRefresh ? (
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={palette.bright}
+              colors={[palette.accent]}
+              progressBackgroundColor={palette.elevated}
+            />
+          ) : undefined
+        }
+      >
+        {children}
+      </ScrollView>
+    </KeyboardAvoidingView>
   ) : (
     // Non-scroll screens that host text inputs still need the keyboard to push
     // content up rather than cover it.

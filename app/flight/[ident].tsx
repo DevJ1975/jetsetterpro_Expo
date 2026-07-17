@@ -131,8 +131,16 @@ export default function FlightDetailScreen() {
   const date = typeof params.date === 'string' && params.date ? params.date : toISODate(new Date(now));
 
   const q = useFlightStatus(live ? ident : null, live ? date : null);
-  const flight: FlightStatus | null = live ? (q.data ?? null) : demoFlightStatus(ident, date, now);
-  const posQ = useFlightPosition(live ? flight : null);
+  // Never lose the whole detail screen (hero map included) to a failed live
+  // fetch — cold-start auth races and offline errors fall back to the labeled
+  // SAMPLE data instead. Loading keeps the skeleton; a 404 (success, null)
+  // still shows "No flight found".
+  const usingSample = !live || q.isError;
+  const flight: FlightStatus | null = usingSample
+    ? demoFlightStatus(ident, date, now)
+    : (q.data ?? null);
+  // Don't poll live position for a sample flight.
+  const posQ = useFlightPosition(usingSample ? null : flight);
   const originWx = useWeather(flight?.origin.city ?? flight?.origin.iata);
   const destWx = useWeather(flight?.destination.city ?? flight?.destination.iata);
 
@@ -206,7 +214,7 @@ export default function FlightDetailScreen() {
         right={<Badge label={statusLabel(flight.status, flight.delayMin)} tone={statusTone(flight.status)} />}
       />
 
-      {!live ? <Badge label="SAMPLE" tone="warn" style={{ marginBottom: spacing.md }} /> : null}
+      {usingSample ? <Badge label="SAMPLE" tone="warn" style={{ marginBottom: spacing.md }} /> : null}
 
       {/* ── Hero route map ─────────────────────────────────────────────── */}
       <RouteMap
@@ -329,7 +337,7 @@ export default function FlightDetailScreen() {
 
       {/* ── Poll indicator footer ──────────────────────────────────────── */}
       <Text style={[type.caption, { textAlign: 'center', marginTop: spacing.xl }]}>
-        {!live
+        {usingSample
           ? 'SAMPLE DATA · connect the flight-data backend for live status'
           : flight.stale
             ? `STALE · showing last cached status · source ${flight.source}`
